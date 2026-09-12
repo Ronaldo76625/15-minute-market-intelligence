@@ -28,6 +28,8 @@ const ASSET_BY_SERIES: Record<(typeof LIVE_SERIES)[number], string> = {
 };
 const KALSHI_TAKER_FEE_RATE = 0.07;
 const SNAPSHOT_CACHE_SECONDS = 30;
+const PUBLISHED_SNAPSHOT_URL =
+  "https://raw.githubusercontent.com/Ronaldo76625/15-minute-market-intelligence/live-data/live-data.json";
 const model = modelSnapshot as ValidatedKalshiModel;
 
 type LiveSignal = ReturnType<typeof buildSignal>;
@@ -68,6 +70,12 @@ type LiveSnapshot = {
   priceHistory: Array<ReturnType<typeof toPricePoint>>;
   asOf: string;
   liveTracking: ForwardTrackingStats;
+};
+
+type StoredSnapshot = Omit<LiveSnapshot, "liveTracking">;
+export type KalshiSettlement = {
+  ticker: string;
+  result: "yes" | "no";
 };
 
 function numberFrom(value: string | number | undefined): number {
@@ -164,6 +172,28 @@ function toPricePoint(candle: KalshiApiCandle) {
   };
 }
 
+function refreshSignalTimers(
+  signals: LiveSignal[],
+  markets: StoredSnapshot["markets"],
+): LiveSignal[] {
+  const closeTimeByTicker = new Map(
+    markets.map((market) => [market.ticker, market.closeTime]),
+  );
+  return signals.map((signal) => {
+    const closeTime = closeTimeByTicker.get(signal.ticker);
+    if (!closeTime) return signal;
+    const secondsToClose = Math.max(
+      0,
+      Math.floor((Date.parse(closeTime) - Date.now()) / 1_000),
+    );
+    return {
+      ...signal,
+      secondsToClose,
+      timeToClose: timeToClose(closeTime),
+    };
+  });
+}
+
 function buildSignal(market: KalshiApiMarket, candles: KalshiApiCandle[]) {
   const secondsToClose = Math.max(
     0,
@@ -248,7 +278,15 @@ async function kalshiFetch<T>(apiPath: string): Promise<T> {
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const response = await fetch(`${KALSHI_API_BASE_URL}${apiPath}`, {
-      headers: { Accept: "application/json" },
+      headers: {
+        Accept: "application/json",
+        "User-Agent":
+          "kalshi-15-minute-predictor/1.0 (+https://github.com/Ronaldo76625/15-minute-market-intelligence)",
+      },
+      cf: {
+        cacheEverything: true,
+        cacheTtl: 15,
+      },
       signal: AbortSignal.timeout(8_000),
     });
     lastStatus = response.status;
@@ -265,30 +303,57 @@ async function kalshiFetch<T>(apiPath: string): Promise<T> {
   }
 
   throw new Error(
-    `Kalshi API returned ${lastStatus ?? "an error"} for the requested resource`,
+    `Kalshi API returned ${lastStatus ?? "an error"} for ${apiPath.slice(0, 160)}`,
   );
 }
 
 async function fetchActiveMarkets(): Promise<KalshiApiMarket[]> {
-  const responses = await Promise.all(
-    LIVE_SERIES.map((seriesTicker) =>
-      kalshiFetch<{ markets: KalshiApiMarket[] }>(
-        `/markets?status=open&limit=10&series_ticker=${seriesTicker}`,
-      ),
-    ),
-  );
-  return responses.flatMap((response) => response.markets);
+  const markets: KalshiApiMarket[] = [];
+  for (const seriesTicker of LIVE_SERIES) {
+    const response = await kalshiFetch<{ markets: KalshiApiMarket[] }>(
+      `/markets?status=open&limit=10&series_ticker=${seriesTicker}`,
+    );
+    markets.push(...response.markets);
+    await new Promise((resolve) => setTimeout(resolve, 175));
+  }
+  return markets;
 }
 
-async function fetchCandles(market: KalshiApiMarket): Promise<KalshiApiCandle[]> {
-  const seriesTicker = seriesFor(market);
+async function fetchCandlesForMarkets(
+  markets: KalshiApiMarket[],
+): Promise<Map<string, KalshiApiCandle[]>> {
+  const candlesByTicker = new Map<string, KalshiApiCandle[]>();
+  if (markets.length === 0) return candlesByTicker;
+  const startTimestamp =
+    Math.floor(
+      Math.min(...markets.map((market) => Date.parse(market.open_time))) / 1_000,
+    ) - 60;
+  const endTimestamp = Math.floor(Date.now() / 1_000);
+  const tickers = markets.map((market) => market.ticker).join(",");
+  const response = await kalshiFetch<{
+    markets: Array<{
+      market_ticker: string;
+      candlesticks: KalshiApiCandle[];
+    }>;
+  }>(
+    `/markets/candlesticks?market_tickers=${encodeURIComponent(tickers)}&start_ts=${startTimestamp}&end_ts=${endTimestamp}&period_interval=1`,
+  );
+  response.markets.forEach((market) => {
+    candlesByTicker.set(market.market_ticker, market.candlesticks);
+  });
+  return candlesByTicker;
+}
+
+async function fetchCandlesForMarket(
+  market: KalshiApiMarket,
+): Promise<KalshiApiCandle[]> {
   const startTimestamp = Math.floor(Date.parse(market.open_time) / 1_000) - 60;
   const endTimestamp = Math.min(
     Math.floor(Date.now() / 1_000),
     Math.floor(Date.parse(market.close_time) / 1_000),
   );
   const response = await kalshiFetch<{ candlesticks: KalshiApiCandle[] }>(
-    `/series/${seriesTicker}/markets/${market.ticker}/candlesticks?start_ts=${startTimestamp}&end_ts=${endTimestamp}&period_interval=1`,
+    `/series/${seriesFor(market)}/markets/${market.ticker}/candlesticks?start_ts=${startTimestamp}&end_ts=${endTimestamp}&period_interval=1`,
   );
   return response.candlesticks;
 }
@@ -337,6 +402,7 @@ function summarizeRecords(records: PaperSignalRow[]): ForwardTrackingStats {
 async function updatePaperSignalLedger(
   env: Env,
   signals: LiveSignal[],
+  settlements: KalshiSettlement[] = [],
 ): Promise<ForwardTrackingStats> {
   const now = new Date().toISOString();
   const eligible = signals.filter(
@@ -366,38 +432,28 @@ async function updatePaperSignalLedger(
     );
   }
 
-  const pending = await env.DB.prepare(
-    "SELECT * FROM paper_signals WHERE result IS NULL ORDER BY created_at ASC LIMIT 100",
-  ).all<PaperSignalRow>();
-  if (pending.results.length > 0) {
-    try {
-      const tickers = encodeURIComponent(
-        pending.results.map((record) => record.ticker).join(","),
-      );
-      const response = await kalshiFetch<{ markets: KalshiApiMarket[] }>(
-        `/markets?limit=100&tickers=${tickers}`,
-      );
-      const resultByTicker = new Map(
-        response.markets.map((market) => [market.ticker, market.result]),
-      );
-      const updates = pending.results.flatMap((record) => {
-        const result = resultByTicker.get(record.ticker);
-        if (result !== "yes" && result !== "no") return [];
-        const correct = record.side.toLowerCase() === result;
-        const grossProfit = correct ? 1 - record.entry_price : -record.entry_price;
-        const netProfit = grossProfit - record.estimated_fee;
-        return [
-          env.DB.prepare(
-            `UPDATE paper_signals
-             SET result = ?, settled_at = ?, correct = ?, net_profit = ?
-             WHERE ticker = ? AND result IS NULL`,
-          ).bind(result, now, correct ? 1 : 0, netProfit, record.ticker),
-        ];
-      });
-      if (updates.length > 0) await env.DB.batch(updates);
-    } catch (error) {
-      console.warn("Unable to settle paper signals", error);
-    }
+  if (settlements.length > 0) {
+    const pending = await env.DB.prepare(
+      "SELECT * FROM paper_signals WHERE result IS NULL ORDER BY created_at ASC LIMIT 100",
+    ).all<PaperSignalRow>();
+    const resultByTicker = new Map(
+      settlements.map((settlement) => [settlement.ticker, settlement.result]),
+    );
+    const updates = pending.results.flatMap((record) => {
+      const result = resultByTicker.get(record.ticker);
+      if (!result) return [];
+      const correct = record.side.toLowerCase() === result;
+      const grossProfit = correct ? 1 - record.entry_price : -record.entry_price;
+      const netProfit = grossProfit - record.estimated_fee;
+      return [
+        env.DB.prepare(
+          `UPDATE paper_signals
+           SET result = ?, settled_at = ?, correct = ?, net_profit = ?
+           WHERE ticker = ? AND result IS NULL`,
+        ).bind(result, now, correct ? 1 : 0, netProfit, record.ticker),
+      ];
+    });
+    if (updates.length > 0) await env.DB.batch(updates);
   }
 
   const records = await env.DB.prepare(
@@ -406,19 +462,27 @@ async function updatePaperSignalLedger(
   return summarizeRecords(records.results);
 }
 
-async function buildLiveSnapshot(env: Env): Promise<LiveSnapshot> {
+export async function generateLiveMarketSnapshot(): Promise<StoredSnapshot> {
   const apiMarkets = await fetchActiveMarkets();
-  const candlesByTicker = new Map<string, KalshiApiCandle[]>();
-  await Promise.all(
-    apiMarkets.map(async (market) => {
+  let candlesByTicker = new Map<string, KalshiApiCandle[]>();
+  try {
+    candlesByTicker = await fetchCandlesForMarkets(apiMarkets);
+  } catch (error) {
+    console.warn("Unable to load live candlesticks", error);
+    const chartMarket =
+      apiMarkets.find((market) => market.ticker.startsWith("KXBTC15M")) ??
+      apiMarkets[0];
+    if (chartMarket) {
       try {
-        candlesByTicker.set(market.ticker, await fetchCandles(market));
-      } catch (error) {
-        console.warn(`Unable to load candles for ${market.ticker}`, error);
-        candlesByTicker.set(market.ticker, []);
+        candlesByTicker.set(
+          chartMarket.ticker,
+          await fetchCandlesForMarket(chartMarket),
+        );
+      } catch (fallbackError) {
+        console.warn("Unable to load chart fallback", fallbackError);
       }
-    }),
-  );
+    }
+  }
   const preferredChartMarket =
     apiMarkets.find((market) => market.ticker.startsWith("KXBTC15M")) ??
     apiMarkets[0];
@@ -436,8 +500,44 @@ async function buildLiveSnapshot(env: Env): Promise<LiveSnapshot> {
     signals,
     priceHistory,
     asOf: new Date().toISOString(),
-    liveTracking: await updatePaperSignalLedger(env, signals),
   };
+}
+
+export async function fetchRecentSettlements(): Promise<KalshiSettlement[]> {
+  const settlements: KalshiSettlement[] = [];
+  for (const seriesTicker of LIVE_SERIES) {
+    const response = await kalshiFetch<{ markets: KalshiApiMarket[] }>(
+      `/markets?status=settled&limit=20&series_ticker=${seriesTicker}`,
+    );
+    response.markets.forEach((market) => {
+      if (market.result === "yes" || market.result === "no") {
+        settlements.push({ ticker: market.ticker, result: market.result });
+      }
+    });
+    await new Promise((resolve) => setTimeout(resolve, 175));
+  }
+  return settlements;
+}
+
+async function readStoredSnapshot(env: Env): Promise<StoredSnapshot | undefined> {
+  const row = await env.DB.prepare(
+    "SELECT payload FROM live_snapshots WHERE id = 1",
+  ).first<{ payload: string }>();
+  if (!row) return undefined;
+  return JSON.parse(row.payload) as StoredSnapshot;
+}
+
+async function writeStoredSnapshot(
+  env: Env,
+  snapshot: StoredSnapshot,
+): Promise<void> {
+  await env.DB.prepare(
+    `INSERT INTO live_snapshots (id, payload, updated_at)
+     VALUES (1, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`,
+  )
+    .bind(JSON.stringify(snapshot), snapshot.asOf)
+    .run();
 }
 
 async function getLiveSnapshot(
@@ -452,7 +552,53 @@ async function getLiveSnapshot(
   const cached = await caches.default.match(cacheKey);
   if (cached) return (await cached.json()) as LiveSnapshot;
 
-  const snapshot = await buildLiveSnapshot(env);
+  let stored: StoredSnapshot | undefined;
+  let settlements: KalshiSettlement[] = [];
+  try {
+    const publishedUrl = new URL(PUBLISHED_SNAPSHOT_URL);
+    publishedUrl.searchParams.set(
+      "refresh",
+      Math.floor(Date.now() / 60_000).toString(),
+    );
+    const response = await fetch(publishedUrl, {
+      headers: { Accept: "application/json" },
+      cf: { cacheEverything: true, cacheTtl: 60 },
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
+    const published = (await response.json()) as {
+      snapshot?: unknown;
+      settlements?: unknown;
+    };
+    if (!isStoredSnapshot(published.snapshot)) {
+      throw new Error("Published snapshot is invalid");
+    }
+    stored = published.snapshot;
+    settlements = Array.isArray(published.settlements)
+      ? published.settlements.filter(
+          (item): item is KalshiSettlement =>
+            Boolean(item) &&
+            typeof item === "object" &&
+            typeof (item as KalshiSettlement).ticker === "string" &&
+            ((item as KalshiSettlement).result === "yes" ||
+              (item as KalshiSettlement).result === "no"),
+        )
+      : [];
+    await writeStoredSnapshot(env, stored);
+  } catch (error) {
+    console.error("Unable to load the published Kalshi snapshot", error);
+    stored = await readStoredSnapshot(env);
+  }
+  if (!stored) {
+    stored = await generateLiveMarketSnapshot();
+    await writeStoredSnapshot(env, stored);
+  }
+  const currentSignals = refreshSignalTimers(stored.signals, stored.markets);
+  const snapshot: LiveSnapshot = {
+    ...stored,
+    signals: currentSignals,
+    liveTracking: await updatePaperSignalLedger(env, currentSignals, settlements),
+  };
   const cachedResponse = new Response(JSON.stringify(snapshot), {
     headers: {
       "content-type": "application/json; charset=utf-8",
@@ -461,6 +607,20 @@ async function getLiveSnapshot(
   });
   ctx.waitUntil(caches.default.put(cacheKey, cachedResponse));
   return snapshot;
+}
+
+function isStoredSnapshot(value: unknown): value is StoredSnapshot {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<StoredSnapshot>;
+  const timestamp = Date.parse(candidate.asOf ?? "");
+  return (
+    Number.isFinite(timestamp) &&
+    timestamp <= Date.now() + 5 * 60 * 1_000 &&
+    timestamp >= Date.now() - 2 * 60 * 60 * 1_000 &&
+    Array.isArray(candidate.markets) &&
+    Array.isArray(candidate.signals) &&
+    Array.isArray(candidate.priceHistory)
+  );
 }
 
 function json(data: unknown, status = 200): Response {
@@ -500,7 +660,7 @@ function dashboardResponse(snapshot: LiveSnapshot, url: URL) {
 
   return {
     asOf: snapshot.asOf,
-    source: `Kalshi public REST API · ${model.name}`,
+    source: `Kalshi public REST API · refreshed every 5 min · ${model.name}`,
     isLive: true,
     totalMarkets: markets.length,
     activeSignals: signals.length,

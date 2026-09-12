@@ -2,6 +2,8 @@
 
 Panel local para generar predicciones probabilísticas experimentales sobre siete contratos activos de criptomonedas de 15 minutos en Kalshi.
 
+Versión pública: [15-minute-market-intelligence.deposadaplazaronaldo.workers.dev](https://15-minute-market-intelligence.deposadaplazaronaldo.workers.dev)
+
 ## Estado de esta copia
 
 - Usa la API REST pública oficial de Kalshi; no requiere clave para leer datos de mercado.
@@ -22,6 +24,7 @@ Panel local para generar predicciones probabilísticas experimentales sobre siet
 - Frontend: React 19, TypeScript, Vite, Tailwind CSS y Recharts.
 - Backend local: Node.js, TypeScript, Express y Zod.
 - Despliegue público: Cloudflare Worker, Static Assets y D1.
+- Actualización pública: GitHub Actions consulta la API oficial cada cinco minutos y publica una instantánea de sólo lectura; Cloudflare la conserva en D1 como respaldo.
 - Monorepo: pnpm workspaces.
 
 ## Abrir el código
@@ -88,6 +91,8 @@ pnpm run cloudflare:deploy
 ```
 
 El esquema de D1 está en `cloudflare/migrations`. Wrangler publica los archivos compilados de React y dirige únicamente `/api/*` al Worker.
+
+El flujo `.github/workflows/update-kalshi-snapshot.yml` renueva los precios cada cinco minutos. Guarda la instantánea en una rama técnica `live-data`, sin credenciales de Kalshi y sin acceso para operar. Si Kalshi o GitHub se retrasan, el panel muestra la hora exacta de la última instantánea almacenada.
 
 ## Interpretación responsable
 

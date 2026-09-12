@@ -1,0 +1,40 @@
+name: Update Kalshi snapshot
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: kalshi-live-snapshot
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter @workspace/scripts...
+      - run: pnpm run live:generate
+        env:
+          KALSHI_SNAPSHOT_OUTPUT: /tmp/kalshi-live-data.json
+      - name: Publish live-data branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --orphan live-data
+          git rm -rf .
+          cp /tmp/kalshi-live-data.json live-data.json
+          git add live-data.json
+          git commit -m "Update Kalshi snapshot"
+          git push --force origin HEAD:live-data

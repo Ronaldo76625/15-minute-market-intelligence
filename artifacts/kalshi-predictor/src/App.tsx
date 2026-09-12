@@ -193,9 +193,9 @@ function Home() {
         <div>
           <div className="mb-4 flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground"><TrendingUp size={19} /></div><span className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">KALSHI / PREDICTOR</span></div>
           <h1 className="max-w-3xl text-3xl font-extrabold tracking-[-0.04em] sm:text-4xl">15-minute market intelligence<span className="text-primary">.</span></h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Live Kalshi prices with experimental probabilities trained and evaluated on chronologically separated BTC, ETH, SOL, XRP, DOGE, BNB, and HYPE contracts.</p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Recent Kalshi prices with experimental probabilities trained and evaluated on chronologically separated BTC, ETH, SOL, XRP, DOGE, BNB, and HYPE contracts.</p>
           <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span data-testid="status-source" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1"><span className={`h-1.5 w-1.5 rounded-full ${dashboard?.isLive ? 'bg-accent' : 'bg-primary'}`} />{dashboard?.isLive ? 'Live API' : 'Snapshot source'}</span>
+            <span data-testid="status-source" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1"><span className={`h-1.5 w-1.5 rounded-full ${dashboard?.isLive ? 'bg-accent' : 'bg-primary'}`} />{dashboard?.isLive ? 'Real market data' : 'Snapshot source'}</span>
             <span className="rounded-full border border-border bg-card px-2.5 py-1 font-mono">{dashboard?.source ?? 'Kalshi feed'} · as of {dashboard?.asOf ? formatTime(dashboard.asOf) : '—'}</span>
             <span className="font-mono text-[10px] uppercase tracking-wider">Updated {lastRefresh}</span>
           </div>
