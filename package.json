@@ -1,0 +1,29 @@
+{
+  "name": "workspace",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
+    "dev": "node ./scripts/dev-local.mjs",
+    "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "cloudflare:types": "wrangler types ./cloudflare/cloudflare-env.d.ts",
+    "cloudflare:typecheck": "tsc -p ./cloudflare/tsconfig.json --noEmit",
+    "cloudflare:dev": "wrangler dev",
+    "cloudflare:deploy": "pnpm run build && wrangler deploy",
+    "cloudflare:migrate:local": "wrangler d1 migrations apply kalshi-predictor-signals --local",
+    "cloudflare:migrate:remote": "wrangler d1 migrations apply kalshi-predictor-signals --remote",
+    "typecheck:libs": "tsc --build",
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "model:refresh": "pnpm exec tsx ./cloudflare/export-model.ts"
+  },
+  "private": true,
+  "dependencies": {
+    "@replit/connectors-sdk": "^0.4.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260911.1",
+    "prettier": "^3.9.6",
+    "typescript": "~5.9.3",
+    "wrangler": "^4.131.0"
+  }
+}

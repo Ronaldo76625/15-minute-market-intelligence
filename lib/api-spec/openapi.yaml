@@ -1,0 +1,396 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: kalshi
+    description: Kalshi market analytics
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /kalshi/dashboard:
+    get:
+      operationId: getKalshiDashboard
+      tags: [kalshi]
+      summary: Get the Kalshi 15-minute analytics dashboard
+      description: Returns live public Kalshi market data, one-minute candle history, probabilistic predictions, and a chronological holdout evaluation of the current model.
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: minConfidence
+          in: query
+          required: false
+          schema:
+            type: number
+            minimum: 0
+            maximum: 100
+            default: 60
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 8
+      responses:
+        "200":
+          description: Kalshi dashboard payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KalshiDashboard"
+  /kalshi/markets:
+    get:
+      operationId: listKalshiMarkets
+      tags: [kalshi]
+      summary: List available Kalshi markets
+      description: Returns active 15-minute BTC, ETH, SOL, XRP, DOGE, BNB, and HYPE contracts from Kalshi's public REST API.
+      responses:
+        "200":
+          description: Market list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/KalshiMarket"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    KalshiMarket:
+      type: object
+      required:
+        - ticker
+        - asset
+        - title
+        - category
+        - closeTime
+        - volume
+        - yesPrice
+        - noPrice
+        - liquidity
+        - status
+      properties:
+        ticker:
+          type: string
+        title:
+          type: string
+        category:
+          type: string
+        closeTime:
+          type: string
+        volume:
+          type: integer
+        yesPrice:
+          type: number
+        noPrice:
+          type: number
+        liquidity:
+          type: string
+        status:
+          type: string
+    KalshiSignal:
+      type: object
+      required:
+        - id
+        - ticker
+        - title
+        - category
+        - side
+        - entryPrice
+        - modelProbability
+        - marketProbability
+        - edge
+        - confidence
+        - liquidity
+        - timeToClose
+        - status
+        - expectedValue
+        - estimatedFee
+        - netExpectedValue
+        - recommendation
+        - score
+        - explanation
+        - updatedAt
+      properties:
+        id:
+          type: string
+        ticker:
+          type: string
+        asset:
+          type: string
+        title:
+          type: string
+        category:
+          type: string
+        side:
+          type: string
+          enum: [YES, NO]
+        entryPrice:
+          type: number
+        modelProbability:
+          type: number
+        marketProbability:
+          type: number
+        edge:
+          type: number
+        confidence:
+          type: number
+        liquidity:
+          type: string
+        timeToClose:
+          type: string
+        status:
+          type: string
+          enum: [watch, strong, caution]
+        expectedValue:
+          type: number
+          description: Gross expected return before fees.
+        estimatedFee:
+          type: number
+          description: Estimated taker fee per contract using Kalshi's general quadratic fee formula.
+        netExpectedValue:
+          type: number
+          description: Expected return after the estimated taker fee.
+        recommendation:
+          type: string
+          enum: [favorable, wait, avoid]
+        score:
+          type: number
+        explanation:
+          type: string
+        updatedAt:
+          type: string
+    KalshiPricePoint:
+      type: object
+      required:
+        - time
+        - yesPrice
+        - volume
+      properties:
+        time:
+          type: string
+        yesPrice:
+          type: number
+        volume:
+          type: integer
+    KalshiPerformancePoint:
+      type: object
+      required:
+        - label
+        - cumulativeReturn
+        - hitRate
+        - trades
+      properties:
+        label:
+          type: string
+        cumulativeReturn:
+          type: number
+        hitRate:
+          type: number
+        trades:
+          type: integer
+    KalshiAssetStats:
+      type: object
+      required:
+        - asset
+        - seriesTicker
+        - sampleSize
+        - hitRate
+        - grossReturn
+        - netReturn
+        - averageNetProfitCents
+        - maxDrawdown
+        - profitable
+        - forwardTracked
+        - forwardResolved
+        - forwardHitRate
+        - forwardNetReturn
+      properties:
+        asset:
+          type: string
+        seriesTicker:
+          type: string
+        sampleSize:
+          type: integer
+        hitRate:
+          type: number
+        grossReturn:
+          type: number
+        netReturn:
+          type: number
+        averageNetProfitCents:
+          type: number
+        maxDrawdown:
+          type: number
+        profitable:
+          type: boolean
+        currentSide:
+          type: string
+          enum: [YES, NO]
+        currentProbability:
+          type: number
+        currentNetExpectedValue:
+          type: number
+        recommendation:
+          type: string
+          enum: [favorable, wait, avoid]
+        forwardTracked:
+          type: integer
+        forwardResolved:
+          type: integer
+        forwardHitRate:
+          type: number
+        forwardNetReturn:
+          type: number
+    KalshiForwardAssetStats:
+      type: object
+      required: [asset, tracked, pending, resolved, hitRate, netReturn, totalProfit]
+      properties:
+        asset:
+          type: string
+        tracked:
+          type: integer
+        pending:
+          type: integer
+        resolved:
+          type: integer
+        hitRate:
+          type: number
+        netReturn:
+          type: number
+        totalProfit:
+          type: number
+    KalshiForwardTracking:
+      type: object
+      required: [startedAt, tracked, pending, resolved, hitRate, netReturn, totalProfit, assets]
+      properties:
+        startedAt:
+          type: string
+          format: date-time
+        tracked:
+          type: integer
+        pending:
+          type: integer
+        resolved:
+          type: integer
+        hitRate:
+          type: number
+        netReturn:
+          type: number
+        totalProfit:
+          type: number
+        assets:
+          type: array
+          items:
+            $ref: "#/components/schemas/KalshiForwardAssetStats"
+    KalshiDashboard:
+      type: object
+      required:
+        - asOf
+        - source
+        - isLive
+        - totalMarkets
+        - activeSignals
+        - averageConfidence
+        - backtestHitRate
+        - simulatedReturn
+        - netSimulatedReturn
+        - modelName
+        - modelTrainedAt
+        - trainingMarkets
+        - backtestSampleSize
+        - baselineHitRate
+        - brierScore
+        - assetStats
+        - liveTracking
+        - signals
+        - priceHistory
+        - performance
+        - markets
+      properties:
+        asOf:
+          type: string
+        source:
+          type: string
+        isLive:
+          type: boolean
+        totalMarkets:
+          type: integer
+        activeSignals:
+          type: integer
+        averageConfidence:
+          type: number
+        backtestHitRate:
+          type: number
+        simulatedReturn:
+          type: number
+          description: Gross paper return in the holdout simulation before fees.
+        netSimulatedReturn:
+          type: number
+          description: Estimated paper return after Kalshi's general taker fee formula.
+        modelName:
+          type: string
+        modelTrainedAt:
+          type: string
+          format: date-time
+        trainingMarkets:
+          type: integer
+        backtestSampleSize:
+          type: integer
+        baselineHitRate:
+          type: number
+          description: Accuracy from choosing the side above 50 percent using only the market quote at the same cutoff.
+        brierScore:
+          type: number
+          description: Mean squared error of the predicted probabilities on the chronological holdout set; lower is better.
+        assetStats:
+          type: array
+          items:
+            $ref: "#/components/schemas/KalshiAssetStats"
+        liveTracking:
+          $ref: "#/components/schemas/KalshiForwardTracking"
+        signals:
+          type: array
+          items:
+            $ref: "#/components/schemas/KalshiSignal"
+        priceHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/KalshiPricePoint"
+        performance:
+          type: array
+          items:
+            $ref: "#/components/schemas/KalshiPerformancePoint"
+        markets:
+          type: array
+          items:
+            $ref: "#/components/schemas/KalshiMarket"

@@ -1,0 +1,183 @@
+{
+  "name": "Multi-asset time-split logistic baseline v2",
+  "trainedAt": "2026-09-12T05:16:15.724Z",
+  "trainingMarkets": 560,
+  "holdoutMarkets": 140,
+  "hitRate": 72.9,
+  "baselineHitRate": 72.1,
+  "brierScore": 0.1874,
+  "grossPaperReturn": -4.7,
+  "netPaperReturn": -6.1,
+  "assetStats": [
+    {
+      "asset": "BTC",
+      "seriesTicker": "KXBTC15M",
+      "sampleSize": 20,
+      "hitRate": 70,
+      "grossReturn": -9,
+      "netReturn": -10.4,
+      "averageNetProfitCents": -8.11,
+      "maxDrawdown": 12.8,
+      "profitable": false
+    },
+    {
+      "asset": "ETH",
+      "seriesTicker": "KXETH15M",
+      "sampleSize": 20,
+      "hitRate": 85,
+      "grossReturn": 17.8,
+      "netReturn": 15.7,
+      "averageNetProfitCents": 11.56,
+      "maxDrawdown": 4.5,
+      "profitable": true
+    },
+    {
+      "asset": "SOL",
+      "seriesTicker": "KXSOL15M",
+      "sampleSize": 20,
+      "hitRate": 70,
+      "grossReturn": -9.7,
+      "netReturn": -11,
+      "averageNetProfitCents": -8.62,
+      "maxDrawdown": 13.2,
+      "profitable": false
+    },
+    {
+      "asset": "XRP",
+      "seriesTicker": "KXXRP15M",
+      "sampleSize": 20,
+      "hitRate": 65,
+      "grossReturn": -15.8,
+      "netReturn": -17,
+      "averageNetProfitCents": -13.33,
+      "maxDrawdown": 20.7,
+      "profitable": false
+    },
+    {
+      "asset": "DOGE",
+      "seriesTicker": "KXDOGE15M",
+      "sampleSize": 20,
+      "hitRate": 85,
+      "grossReturn": 20,
+      "netReturn": 17.9,
+      "averageNetProfitCents": 12.88,
+      "maxDrawdown": 7.9,
+      "profitable": true
+    },
+    {
+      "asset": "BNB",
+      "seriesTicker": "KXBNB15M",
+      "sampleSize": 20,
+      "hitRate": 65,
+      "grossReturn": -23.4,
+      "netReturn": -24.1,
+      "averageNetProfitCents": -20.65,
+      "maxDrawdown": 26.8,
+      "profitable": false
+    },
+    {
+      "asset": "HYPE",
+      "seriesTicker": "KXHYPE15M",
+      "sampleSize": 20,
+      "hitRate": 70,
+      "grossReturn": -7.7,
+      "netReturn": -9,
+      "averageNetProfitCents": -6.96,
+      "maxDrawdown": 15.7,
+      "profitable": false
+    }
+  ],
+  "performance": [
+    {
+      "label": "Sep 11, 8 PM",
+      "cumulativeReturn": -9.1,
+      "hitRate": 66.7,
+      "trades": 18
+    },
+    {
+      "label": "Sep 11, 8 PM",
+      "cumulativeReturn": 0.5,
+      "hitRate": 77.1,
+      "trades": 35
+    },
+    {
+      "label": "Sep 11, 9 PM",
+      "cumulativeReturn": -0.5,
+      "hitRate": 75.5,
+      "trades": 53
+    },
+    {
+      "label": "Sep 11, 9 PM",
+      "cumulativeReturn": -4.2,
+      "hitRate": 72.9,
+      "trades": 70
+    },
+    {
+      "label": "Sep 11, 10 PM",
+      "cumulativeReturn": -5.1,
+      "hitRate": 72.7,
+      "trades": 88
+    },
+    {
+      "label": "Sep 11, 11 PM",
+      "cumulativeReturn": -7.9,
+      "hitRate": 70.5,
+      "trades": 105
+    },
+    {
+      "label": "Sep 11, 11 PM",
+      "cumulativeReturn": -8.2,
+      "hitRate": 70.7,
+      "trades": 123
+    },
+    {
+      "label": "Sep 12, 12 AM",
+      "cumulativeReturn": -6.1,
+      "hitRate": 72.9,
+      "trades": 140
+    }
+  ],
+  "weights": [
+    -0.08673952856317478,
+    1.5820354136687589,
+    0.6825627211598094,
+    0.034630577013346715,
+    0.045010104496850056,
+    -0.07650198900718769,
+    0.0927546699473558,
+    -0.06225619190253885,
+    0.022187200334632284,
+    -0.09310986136609231,
+    -0.030658997872879547,
+    0.07447746243733533,
+    0.07957865418637906
+  ],
+  "means": [
+    0.04726847369306574,
+    0.07883705357142869,
+    0.03203348214285714,
+    0.1208898809523739,
+    0.49999999999999833,
+    0.9552968889998082,
+    0.1428571428571424,
+    0.1428571428571424,
+    0.1428571428571424,
+    0.1428571428571424,
+    0.1428571428571424,
+    0.1428571428571424
+  ],
+  "standardDeviations": [
+    2.220460472528776,
+    3.0131854519664842,
+    1.8704881901694708,
+    0.10611993335254082,
+    0.23013683530231022,
+    0.19174088021582164,
+    0.3499271061118737,
+    0.3499271061118737,
+    0.3499271061118737,
+    0.3499271061118738,
+    0.3499271061118738,
+    0.3499271061118738
+  ]
+}

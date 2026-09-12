@@ -1,0 +1,28 @@
+kind = "data-app"
+previewPath = "/"
+title = "Kalshi 15-Minute Predictor"
+description = "A web dashboard for analyzing Kalshi 15-minute event markets, ranking evidence-backed signals, and measuring historical performance in simulation mode."
+version = "1.0.0"
+id = "artifacts/kalshi-predictor"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25107
+
+[services.development]
+run = "pnpm --filter @workspace/kalshi-predictor run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/kalshi-predictor", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/kalshi-predictor/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25107"
+BASE_PATH = "/"
