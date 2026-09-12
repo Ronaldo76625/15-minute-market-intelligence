@@ -1,8 +1,8 @@
-name: Update Kalshi snapshot
+name: Retrain Kalshi model
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "17 4 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -10,9 +10,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  update:
+  retrain:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
@@ -25,18 +25,16 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile --filter @workspace/scripts...
-      - name: Load latest validated model
+      - name: Train, calibrate, and evaluate model
+        run: pnpm run model:refresh
+      - name: Generate a live snapshot with the validated model
         run: |
-          if ! curl --fail --silent --show-error --location \
-            https://raw.githubusercontent.com/Ronaldo76625/15-minute-market-intelligence/live-data/model-snapshot.json \
-            --output /tmp/kalshi-model.json; then
-            cp cloudflare/model-snapshot.json /tmp/kalshi-model.json
-          fi
-      - run: pnpm run live:generate
+          cp cloudflare/model-snapshot.json /tmp/kalshi-model.json
+          pnpm run live:generate
         env:
           KALSHI_SNAPSHOT_OUTPUT: /tmp/kalshi-live-data.json
           KALSHI_MODEL_INPUT: /tmp/kalshi-model.json
-      - name: Publish live-data branch
+      - name: Publish validated model and live snapshot
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -44,5 +42,5 @@ jobs:
           cp /tmp/kalshi-live-data.json live-data.json
           cp /tmp/kalshi-model.json model-snapshot.json
           git add live-data.json model-snapshot.json
-          git commit -m "Update Kalshi snapshot"
+          git commit -m "Retrain Kalshi model"
           git push --force origin HEAD:live-data

@@ -1,21 +1,53 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1"
+    />
     <title>Kalshi 15-Minute Predictor</title>
-    <meta name="description" content="Kalshi 15-Minute Predictor — built on Replit. Update this description to reflect the app." />
+    <meta
+      name="description"
+      content="Calibrated 15-minute Kalshi market predictions for seven cryptocurrency contracts, with chronological evaluation and no trading functions."
+    />
     <meta name="robots" content="index, follow" />
     <meta property="og:title" content="Kalshi 15-Minute Predictor" />
-    <meta property="og:description" content="Kalshi 15-Minute Predictor — built on Replit. Update this description to reflect the app." />
+    <meta
+      property="og:description"
+      content="Calibrated 15-minute Kalshi market predictions with transparent chronological evaluation."
+    />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Kalshi 15-Minute Predictor" />
-    <meta name="twitter:description" content="Kalshi 15-Minute Predictor — built on Replit. Update this description to reflect the app." />
+    <meta
+      name="twitter:description"
+      content="Calibrated 15-minute Kalshi market predictions with transparent chronological evaluation."
+    />
+    <script>
+      try {
+        const savedTheme = localStorage.getItem("kalshi-theme-preference-v2");
+        const dark =
+          savedTheme === "dark" ||
+          (savedTheme !== "light" &&
+            matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.classList.toggle("dark", dark);
+        const savedLanguage = localStorage.getItem("kalshi-language");
+        document.documentElement.lang =
+          savedLanguage === "en" || savedLanguage === "es"
+            ? savedLanguage
+            : navigator.language.toLowerCase().startsWith("es")
+              ? "es"
+              : "en";
+      } catch {}
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="root"></div>

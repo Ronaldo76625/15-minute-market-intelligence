@@ -3,7 +3,8 @@ import {
   type ComponentType,
   type ErrorInfo,
   type ReactNode,
-} from 'react';
+} from "react";
+import { preferredLanguage, translations } from "@/i18n";
 
 export interface ErrorFallbackProps {
   error: Error;
@@ -25,7 +26,7 @@ function toError(value: unknown): Error {
   if (value instanceof Error) {
     return value;
   }
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return new Error(value);
   }
   try {
@@ -36,16 +37,12 @@ function toError(value: unknown): Error {
 }
 
 function DefaultFallback({ error, resetError }: ErrorFallbackProps) {
+  const copy = translations[preferredLanguage()];
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 p-6">
       <div className="max-w-lg w-full text-center">
-        <h1 className="text-xl font-semibold text-gray-900">
-          Something went wrong
-        </h1>
-        <p className="mt-2 text-sm text-gray-600">
-          This part of the app hit an error. The rest of the app is still
-          running.
-        </p>
+        <h1 className="text-xl font-semibold text-gray-900">{copy.appError}</h1>
+        <p className="mt-2 text-sm text-gray-600">{copy.appErrorBody}</p>
         {/* Dev only: messages can carry API responses and other internals. */}
         {import.meta.env.DEV ? (
           <pre className="mt-4 overflow-x-auto rounded bg-gray-100 p-3 text-left text-xs text-gray-800">
@@ -57,7 +54,7 @@ function DefaultFallback({ error, resetError }: ErrorFallbackProps) {
           onClick={resetError}
           className="mt-4 rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700"
         >
-          Try again
+          {copy.tryAgain}
         </button>
       </div>
     </div>
@@ -76,7 +73,7 @@ export class ErrorBoundary extends Component<
 
   componentDidCatch(error: unknown, info: ErrorInfo): void {
     console.error(
-      'ErrorBoundary caught an error:',
+      "ErrorBoundary caught an error:",
       toError(error),
       info.componentStack,
     );

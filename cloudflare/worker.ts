@@ -6,8 +6,7 @@ import {
   type ValidatedKalshiModel,
 } from "../artifacts/api-server/src/services/kalshi-model";
 
-const KALSHI_API_BASE_URL =
-  "https://external-api.kalshi.com/trade-api/v2";
+const KALSHI_API_BASE_URL = "https://external-api.kalshi.com/trade-api/v2";
 const LIVE_SERIES = [
   "KXBTC15M",
   "KXETH15M",
@@ -30,7 +29,7 @@ const KALSHI_TAKER_FEE_RATE = 0.07;
 const SNAPSHOT_CACHE_SECONDS = 30;
 const PUBLISHED_SNAPSHOT_URL =
   "https://raw.githubusercontent.com/Ronaldo76625/15-minute-market-intelligence/live-data/live-data.json";
-const model = modelSnapshot as ValidatedKalshiModel;
+const bundledModel = modelSnapshot as ValidatedKalshiModel;
 
 type LiveSignal = ReturnType<typeof buildSignal>;
 type PaperSignalRow = {
@@ -64,15 +63,14 @@ type ForwardTrackingStats = Omit<ForwardAssetStats, "asset"> & {
   assets: ForwardAssetStats[];
 };
 
-type LiveSnapshot = {
+type StoredSnapshot = {
   markets: Array<ReturnType<typeof toDashboardMarket>>;
   signals: LiveSignal[];
   priceHistory: Array<ReturnType<typeof toPricePoint>>;
   asOf: string;
-  liveTracking: ForwardTrackingStats;
+  model: ValidatedKalshiModel;
 };
-
-type StoredSnapshot = Omit<LiveSnapshot, "liveTracking">;
+type LiveSnapshot = StoredSnapshot & { liveTracking: ForwardTrackingStats };
 export type KalshiSettlement = {
   ticker: string;
   result: "yes" | "no";
@@ -194,13 +192,18 @@ function refreshSignalTimers(
   });
 }
 
-function buildSignal(market: KalshiApiMarket, candles: KalshiApiCandle[]) {
+function buildSignal(
+  market: KalshiApiMarket,
+  candles: KalshiApiCandle[],
+  selectedModel: ValidatedKalshiModel = bundledModel,
+) {
   const secondsToClose = Math.max(
     0,
     Math.floor((Date.parse(market.close_time) - Date.now()) / 1_000),
   );
-  const prediction = predictLiveMarket(market, candles, model);
-  const side = prediction.yesProbability >= 0.5 ? ("YES" as const) : ("NO" as const);
+  const prediction = predictLiveMarket(market, candles, selectedModel);
+  const side =
+    prediction.yesProbability >= 0.5 ? ("YES" as const) : ("NO" as const);
   const marketProbability =
     (side === "YES"
       ? prediction.marketYesProbability
@@ -221,8 +224,7 @@ function buildSignal(market: KalshiApiMarket, candles: KalshiApiCandle[]) {
     entryPrice > 0
       ? ((modelProbability / 100 - entryPrice) / entryPrice) * 100
       : 0;
-  const estimatedFee =
-    KALSHI_TAKER_FEE_RATE * entryPrice * (1 - entryPrice);
+  const estimatedFee = KALSHI_TAKER_FEE_RATE * entryPrice * (1 - entryPrice);
   const netExpectedValue =
     entryPrice > 0
       ? ((modelProbability / 100 - entryPrice - estimatedFee) /
@@ -230,11 +232,18 @@ function buildSignal(market: KalshiApiMarket, candles: KalshiApiCandle[]) {
         100
       : 0;
   const asset = assetFor(market);
-  const assetHistory = model.assetStats.find((stats) => stats.asset === asset);
+  const assetHistory = selectedModel.assetStats.find(
+    (stats) => stats.asset === asset,
+  );
+  const qualifiedConfidence =
+    confidence >= (selectedModel.confidenceThreshold ?? 60);
+  const validationApproved = (selectedModel.reliableAssets ?? []).includes(
+    asset,
+  );
   const recommendation =
-    assetHistory?.profitable && confidence >= 60 && netExpectedValue >= 3
+    validationApproved && qualifiedConfidence && netExpectedValue >= 3
       ? ("favorable" as const)
-      : netExpectedValue > 0
+      : qualifiedConfidence && netExpectedValue > 0
         ? ("wait" as const)
         : ("avoid" as const);
   const status =
@@ -264,10 +273,9 @@ function buildSignal(market: KalshiApiMarket, candles: KalshiApiCandle[]) {
     netExpectedValue: rounded(netExpectedValue),
     recommendation,
     score: rounded(confidence + clamp(netExpectedValue, -20, 20)),
-    explanation: `${model.name} estimates ${modelProbability.toFixed(1)}% for ${side}, versus ${marketProbability.toFixed(1)}% implied by the current quote. ${asset} returned an estimated ${assetHistory?.netReturn.toFixed(1) ?? "0.0"}% after fees in its unseen-market test; spread is ${(prediction.spread * 100).toFixed(1)}¢.`,
+    explanation: `${selectedModel.name} estimates ${modelProbability.toFixed(1)}% for ${side}, versus ${marketProbability.toFixed(1)}% implied by the current quote. ${asset} returned an estimated ${assetHistory?.netReturn.toFixed(1) ?? "0.0"}% after fees in its unseen-market test; spread is ${(prediction.spread * 100).toFixed(1)}¢.`,
     updatedAt: new Date(
-      (candles.at(-1)?.end_period_ts ?? Math.floor(Date.now() / 1_000)) *
-        1_000,
+      (candles.at(-1)?.end_period_ts ?? Math.floor(Date.now() / 1_000)) * 1_000,
     ).toISOString(),
     secondsToClose,
   };
@@ -326,7 +334,8 @@ async function fetchCandlesForMarkets(
   if (markets.length === 0) return candlesByTicker;
   const startTimestamp =
     Math.floor(
-      Math.min(...markets.map((market) => Date.parse(market.open_time))) / 1_000,
+      Math.min(...markets.map((market) => Date.parse(market.open_time))) /
+        1_000,
     ) - 60;
   const endTimestamp = Math.floor(Date.now() / 1_000);
   const tickers = markets.map((market) => market.ticker).join(",");
@@ -403,6 +412,7 @@ async function updatePaperSignalLedger(
   env: Env,
   signals: LiveSignal[],
   settlements: KalshiSettlement[] = [],
+  modelName = bundledModel.name,
 ): Promise<ForwardTrackingStats> {
   const now = new Date().toISOString();
   const eligible = signals.filter(
@@ -424,7 +434,7 @@ async function updatePaperSignalLedger(
           signal.entryPrice,
           signal.modelProbability,
           signal.estimatedFee,
-          model.name,
+          modelName,
           signal.secondsToClose,
           now,
         ),
@@ -443,7 +453,9 @@ async function updatePaperSignalLedger(
       const result = resultByTicker.get(record.ticker);
       if (!result) return [];
       const correct = record.side.toLowerCase() === result;
-      const grossProfit = correct ? 1 - record.entry_price : -record.entry_price;
+      const grossProfit = correct
+        ? 1 - record.entry_price
+        : -record.entry_price;
       const netProfit = grossProfit - record.estimated_fee;
       return [
         env.DB.prepare(
@@ -462,7 +474,9 @@ async function updatePaperSignalLedger(
   return summarizeRecords(records.results);
 }
 
-export async function generateLiveMarketSnapshot(): Promise<StoredSnapshot> {
+export async function generateLiveMarketSnapshot(
+  selectedModel: ValidatedKalshiModel = bundledModel,
+): Promise<StoredSnapshot> {
   const apiMarkets = await fetchActiveMarkets();
   let candlesByTicker = new Map<string, KalshiApiCandle[]>();
   try {
@@ -492,7 +506,11 @@ export async function generateLiveMarketSnapshot(): Promise<StoredSnapshot> {
         .map(toPricePoint)
     : [];
   const signals = apiMarkets.map((market) =>
-    buildSignal(market, candlesByTicker.get(market.ticker) ?? []),
+    buildSignal(
+      market,
+      candlesByTicker.get(market.ticker) ?? [],
+      selectedModel,
+    ),
   );
 
   return {
@@ -500,6 +518,7 @@ export async function generateLiveMarketSnapshot(): Promise<StoredSnapshot> {
     signals,
     priceHistory,
     asOf: new Date().toISOString(),
+    model: selectedModel,
   };
 }
 
@@ -519,12 +538,18 @@ export async function fetchRecentSettlements(): Promise<KalshiSettlement[]> {
   return settlements;
 }
 
-async function readStoredSnapshot(env: Env): Promise<StoredSnapshot | undefined> {
+async function readStoredSnapshot(
+  env: Env,
+): Promise<StoredSnapshot | undefined> {
   const row = await env.DB.prepare(
     "SELECT payload FROM live_snapshots WHERE id = 1",
   ).first<{ payload: string }>();
   if (!row) return undefined;
-  return JSON.parse(row.payload) as StoredSnapshot;
+  const parsed: unknown = JSON.parse(row.payload);
+  // Keep the last verified D1 snapshot as a resilience fallback if GitHub or
+  // Kalshi is temporarily unavailable. Freshness is enforced for published
+  // snapshots, while the UI still exposes the original `asOf` timestamp.
+  return isStoredSnapshot(parsed, true) ? parsed : undefined;
 }
 
 async function writeStoredSnapshot(
@@ -597,7 +622,12 @@ async function getLiveSnapshot(
   const snapshot: LiveSnapshot = {
     ...stored,
     signals: currentSignals,
-    liveTracking: await updatePaperSignalLedger(env, currentSignals, settlements),
+    liveTracking: await updatePaperSignalLedger(
+      env,
+      currentSignals,
+      settlements,
+      stored.model.name,
+    ),
   };
   const cachedResponse = new Response(JSON.stringify(snapshot), {
     headers: {
@@ -609,17 +639,47 @@ async function getLiveSnapshot(
   return snapshot;
 }
 
-function isStoredSnapshot(value: unknown): value is StoredSnapshot {
+function isStoredSnapshot(
+  value: unknown,
+  allowStale = false,
+): value is StoredSnapshot {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<StoredSnapshot>;
   const timestamp = Date.parse(candidate.asOf ?? "");
   return (
     Number.isFinite(timestamp) &&
     timestamp <= Date.now() + 5 * 60 * 1_000 &&
-    timestamp >= Date.now() - 2 * 60 * 60 * 1_000 &&
+    (allowStale || timestamp >= Date.now() - 2 * 60 * 60 * 1_000) &&
     Array.isArray(candidate.markets) &&
     Array.isArray(candidate.signals) &&
-    Array.isArray(candidate.priceHistory)
+    Array.isArray(candidate.priceHistory) &&
+    isValidatedModel(candidate.model)
+  );
+}
+
+function isValidatedModel(value: unknown): value is ValidatedKalshiModel {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<ValidatedKalshiModel>;
+  return (
+    typeof candidate.name === "string" &&
+    typeof candidate.trainedAt === "string" &&
+    Number.isFinite(candidate.trainingMarkets) &&
+    Number.isFinite(candidate.calibrationMarkets) &&
+    Number.isFinite(candidate.evaluationMarkets) &&
+    Number.isFinite(candidate.hitRate) &&
+    Number.isFinite(candidate.hitRateLowerBound) &&
+    Number.isFinite(candidate.brierScore) &&
+    Number.isFinite(candidate.marketBrierScore) &&
+    Number.isFinite(candidate.brierSkillScore) &&
+    Number.isFinite(candidate.expectedCalibrationError) &&
+    Number.isFinite(candidate.confidenceThreshold) &&
+    Array.isArray(candidate.weights) &&
+    Array.isArray(candidate.means) &&
+    Array.isArray(candidate.standardDeviations) &&
+    candidate.weights.length === candidate.means.length + 1 &&
+    candidate.means.length === candidate.standardDeviations.length &&
+    Array.isArray(candidate.assetStats) &&
+    Array.isArray(candidate.reliableAssets)
   );
 }
 
@@ -631,6 +691,7 @@ function json(data: unknown, status = 200): Response {
 }
 
 function dashboardResponse(snapshot: LiveSnapshot, url: URL) {
+  const activeModel = snapshot.model;
   const category = url.searchParams.get("category") ?? "";
   const parsedConfidence = Number(url.searchParams.get("minConfidence") ?? 60);
   const parsedLimit = Number(url.searchParams.get("limit") ?? 8);
@@ -660,21 +721,30 @@ function dashboardResponse(snapshot: LiveSnapshot, url: URL) {
 
   return {
     asOf: snapshot.asOf,
-    source: `Kalshi public REST API · refreshed every 5 min · ${model.name}`,
+    source: `Kalshi public REST API · refreshed every 5 min · ${activeModel.name}`,
     isLive: true,
     totalMarkets: markets.length,
     activeSignals: signals.length,
     averageConfidence,
-    backtestHitRate: model.hitRate,
-    simulatedReturn: model.grossPaperReturn,
-    netSimulatedReturn: model.netPaperReturn,
-    modelName: model.name,
-    modelTrainedAt: model.trainedAt,
-    trainingMarkets: model.trainingMarkets,
-    backtestSampleSize: model.holdoutMarkets,
-    baselineHitRate: model.baselineHitRate,
-    brierScore: model.brierScore,
-    assetStats: model.assetStats.map((stats) => {
+    backtestHitRate: activeModel.hitRate,
+    hitRateLowerBound: activeModel.hitRateLowerBound,
+    simulatedReturn: activeModel.grossPaperReturn,
+    netSimulatedReturn: activeModel.netPaperReturn,
+    modelName: activeModel.name,
+    modelTrainedAt: activeModel.trainedAt,
+    trainingMarkets: activeModel.trainingMarkets,
+    calibrationMarkets: activeModel.calibrationMarkets,
+    evaluationMarkets: activeModel.evaluationMarkets,
+    backtestSampleSize: activeModel.holdoutMarkets,
+    baselineHitRate: activeModel.baselineHitRate,
+    brierScore: activeModel.brierScore,
+    marketBrierScore: activeModel.marketBrierScore,
+    brierSkillScore: activeModel.brierSkillScore,
+    logLoss: activeModel.logLoss,
+    expectedCalibrationError: activeModel.expectedCalibrationError,
+    signalCoverage: activeModel.signalCoverage,
+    confidenceThreshold: activeModel.confidenceThreshold,
+    assetStats: activeModel.assetStats.map((stats) => {
       const current = snapshot.signals.find(
         (signal) => signal.asset === stats.asset,
       );
@@ -696,7 +766,7 @@ function dashboardResponse(snapshot: LiveSnapshot, url: URL) {
     liveTracking: snapshot.liveTracking,
     signals,
     priceHistory: snapshot.priceHistory,
-    performance: model.performance,
+    performance: activeModel.performance,
     markets,
   };
 }
@@ -706,7 +776,8 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/api/kalshi/dashboard") {
-      if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
+      if (request.method !== "GET")
+        return json({ error: "Method not allowed" }, 405);
       try {
         const snapshot = await getLiveSnapshot(env, request, ctx);
         return json(dashboardResponse(snapshot, url));
@@ -717,7 +788,8 @@ export default {
     }
 
     if (url.pathname === "/api/kalshi/markets") {
-      if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
+      if (request.method !== "GET")
+        return json({ error: "Method not allowed" }, 405);
       try {
         const snapshot = await getLiveSnapshot(env, request, ctx);
         return json(snapshot.markets);

@@ -19,7 +19,10 @@ export interface KalshiDashboard {
   totalMarkets: number;
   activeSignals: number;
   averageConfidence: number;
+  /** Accuracy of qualified predictions in the untouched chronological evaluation period. */
   backtestHitRate: number;
+  /** Conservative 95 percent Wilson lower confidence bound for the qualified hit rate. */
+  hitRateLowerBound: number;
   /** Gross paper return in the holdout simulation before fees. */
   simulatedReturn: number;
   /** Estimated paper return after Kalshi's general taker fee formula. */
@@ -27,11 +30,26 @@ export interface KalshiDashboard {
   modelName: string;
   modelTrainedAt: Date;
   trainingMarkets: number;
+  calibrationMarkets: number;
+  evaluationMarkets: number;
+  /** Number of evaluation markets that passed the confidence policy. */
   backtestSampleSize: number;
   /** Accuracy from choosing the side above 50 percent using only the market quote at the same cutoff. */
   baselineHitRate: number;
   /** Mean squared error of the predicted probabilities on the chronological holdout set; lower is better. */
   brierScore: number;
+  /** Brier score from the Kalshi midpoint probability on the same untouched markets. */
+  marketBrierScore: number;
+  /** Percentage Brier improvement over the Kalshi midpoint; positive is better. */
+  brierSkillScore: number;
+  /** Logarithmic loss on every market in the untouched chronological evaluation set; lower is better. */
+  logLoss: number;
+  /** Weighted absolute calibration gap in percentage points across ten probability bins; lower is better. */
+  expectedCalibrationError: number;
+  /** Percentage of evaluation markets that passed the confidence policy. */
+  signalCoverage: number;
+  /** Minimum calibrated side probability required by the selected signal policy. */
+  confidenceThreshold: number;
   assetStats: KalshiAssetStats[];
   liveTracking: KalshiForwardTracking;
   signals: KalshiSignal[];

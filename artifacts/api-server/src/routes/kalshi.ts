@@ -162,9 +162,7 @@ function buildSignal(
   );
   const prediction = predictLiveMarket(market, candles, model);
   const side =
-    prediction.yesProbability >= 0.5
-      ? ("YES" as const)
-      : ("NO" as const);
+    prediction.yesProbability >= 0.5 ? ("YES" as const) : ("NO" as const);
   const marketProbability =
     (side === "YES"
       ? prediction.marketYesProbability
@@ -177,7 +175,8 @@ function buildSignal(
     side === "YES"
       ? numberFrom(market.yes_ask_dollars)
       : numberFrom(market.no_ask_dollars);
-  const entryPrice = quotedEntry || (side === "YES" ? yesPrice(market) : noPrice(market));
+  const entryPrice =
+    quotedEntry || (side === "YES" ? yesPrice(market) : noPrice(market));
   const edge = modelProbability - marketProbability;
   const confidence = Math.round(modelProbability);
   const expectedValue =
@@ -193,10 +192,12 @@ function buildSignal(
       : 0;
   const asset = assetFor(market);
   const assetHistory = model.assetStats.find((stats) => stats.asset === asset);
+  const qualifiedConfidence = confidence >= (model.confidenceThreshold ?? 60);
+  const validationApproved = (model.reliableAssets ?? []).includes(asset);
   const recommendation =
-    assetHistory?.profitable && confidence >= 60 && netExpectedValue >= 3
+    validationApproved && qualifiedConfidence && netExpectedValue >= 3
       ? ("favorable" as const)
-      : netExpectedValue > 0
+      : qualifiedConfidence && netExpectedValue > 0
         ? ("wait" as const)
         : ("avoid" as const);
   const status =
@@ -228,8 +229,7 @@ function buildSignal(
     score: rounded(confidence + clamp(netExpectedValue, -20, 20)),
     explanation: `${model.name} estimates ${modelProbability.toFixed(1)}% for ${side}, versus ${marketProbability.toFixed(1)}% implied by the current quote. ${asset} returned an estimated ${assetHistory?.netReturn.toFixed(1) ?? "0.0"}% after fees in its unseen-market test; spread is ${(prediction.spread * 100).toFixed(1)}¢.`,
     updatedAt: new Date(
-      (candles.at(-1)?.end_period_ts ?? Math.floor(Date.now() / 1_000)) *
-        1_000,
+      (candles.at(-1)?.end_period_ts ?? Math.floor(Date.now() / 1_000)) * 1_000,
     ).toISOString(),
     secondsToClose,
   };
@@ -250,13 +250,16 @@ async function kalshiFetch<T>(path: string): Promise<T> {
     const shouldRetry = response.status === 429 || response.status >= 500;
     if (!shouldRetry || attempt === 2) break;
     const retryAfterSeconds = Number(response.headers.get("retry-after"));
-    const waitMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
-      ? retryAfterSeconds * 1_000
-      : 750 * (attempt + 1);
+    const waitMs =
+      Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+        ? retryAfterSeconds * 1_000
+        : 750 * (attempt + 1);
     await new Promise((resolve) => setTimeout(resolve, waitMs));
   }
 
-  throw new Error(`Kalshi API returned ${lastStatus ?? "an error"} for ${safePath}`);
+  throw new Error(
+    `Kalshi API returned ${lastStatus ?? "an error"} for ${safePath}`,
+  );
 }
 
 async function fetchActiveMarkets(): Promise<KalshiApiMarket[]> {
@@ -270,7 +273,9 @@ async function fetchActiveMarkets(): Promise<KalshiApiMarket[]> {
   return responses.flatMap((response) => response.markets);
 }
 
-async function fetchCandles(market: KalshiApiMarket): Promise<KalshiApiCandle[]> {
+async function fetchCandles(
+  market: KalshiApiMarket,
+): Promise<KalshiApiCandle[]> {
   const seriesTicker = seriesFor(market);
   const startTimestamp = Math.floor(Date.parse(market.open_time) / 1_000) - 60;
   const endTimestamp = Math.min(
@@ -350,7 +355,10 @@ async function getLiveSnapshot(): Promise<LiveSnapshot> {
 router.get("/kalshi/dashboard", async (req, res): Promise<void> => {
   const parsed = GetKalshiDashboardQueryParams.safeParse(req.query);
   if (!parsed.success) {
-    req.log.warn({ errors: parsed.error.message }, "Invalid Kalshi dashboard query");
+    req.log.warn(
+      { errors: parsed.error.message },
+      "Invalid Kalshi dashboard query",
+    );
     res.status(400).json({ error: parsed.error.message });
     return;
   }
@@ -385,14 +393,23 @@ router.get("/kalshi/dashboard", async (req, res): Promise<void> => {
         activeSignals: filteredSignals.length,
         averageConfidence,
         backtestHitRate: snapshot.model.hitRate,
+        hitRateLowerBound: snapshot.model.hitRateLowerBound,
         simulatedReturn: snapshot.model.grossPaperReturn,
         netSimulatedReturn: snapshot.model.netPaperReturn,
         modelName: snapshot.model.name,
         modelTrainedAt: snapshot.model.trainedAt,
         trainingMarkets: snapshot.model.trainingMarkets,
+        calibrationMarkets: snapshot.model.calibrationMarkets,
+        evaluationMarkets: snapshot.model.evaluationMarkets,
         backtestSampleSize: snapshot.model.holdoutMarkets,
         baselineHitRate: snapshot.model.baselineHitRate,
         brierScore: snapshot.model.brierScore,
+        marketBrierScore: snapshot.model.marketBrierScore,
+        brierSkillScore: snapshot.model.brierSkillScore,
+        logLoss: snapshot.model.logLoss,
+        expectedCalibrationError: snapshot.model.expectedCalibrationError,
+        signalCoverage: snapshot.model.signalCoverage,
+        confidenceThreshold: snapshot.model.confidenceThreshold,
         assetStats: snapshot.model.assetStats.map((stats) => {
           const current = snapshot.signals.find(
             (signal) => signal.asset === stats.asset,

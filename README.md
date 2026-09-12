@@ -8,15 +8,17 @@ Versión pública: [15-minute-market-intelligence.deposadaplazaronaldo.workers.d
 
 - Usa la API REST pública oficial de Kalshi; no requiere clave para leer datos de mercado.
 - Consulta las series de 15 minutos para BTC, ETH, SOL, XRP, DOGE, BNB y HYPE.
+- Selecciona inglés o español y modo claro u oscuro según el dispositivo en la primera visita; ambos pueden cambiarse manualmente.
 - Muestra precios como decimales de dólar internamente (`0.41`) y como centavos en pantalla (`41.0¢`).
 - La gráfica usa velas públicas de un minuto del contrato activo de 15 minutos.
-- Entrena una regresión logística con mercados resueltos, precios, momentum, spread, volumen, tiempo restante y activo.
-- Separa cronológicamente entrenamiento y validación. El 20% más reciente no participa en el ajuste y se usa como holdout.
-- La tasa de acierto se mide con una predicción por mercado cinco minutos antes del cierre y se compara contra la dirección implícita del precio de Kalshi.
-- El Brier score mide el error de las probabilidades; un valor menor es mejor.
+- Puede cargar hasta 1,000 mercados resueltos por moneda y entrena un conjunto logístico con precio, momentum de varios horizontes, spread, volumen reciente, volatilidad, rango, interés abierto, hora y activo.
+- Separa cronológicamente el historial en 70% para entrenamiento, 15% para calibración y 15% para una evaluación final que nunca interviene en los ajustes.
+- Calibra las probabilidades, las compara con el precio de Kalshi y vuelve automáticamente a esa referencia cuando las variables adicionales no demuestran una mejora estable.
+- La política de confianza se elige con el límite inferior de Wilson y exige una muestra mínima. La pantalla muestra acierto, límite conservador al 95% y cobertura para evitar porcentajes altos basados en pocas señales.
+- Brier score, Brier skill, log-loss y error de calibración miden la calidad de todas las probabilidades, no sólo los aciertos.
 - Muestra rentabilidad histórica por moneda al precio ask y descuenta una estimación de la comisión taker general de Kalshi.
 - Registra una sola señal por contrato aproximadamente cinco minutos antes del cierre y la evalúa cuando Kalshi publica el resultado. En local usa `.local/paper-signals.json`; la versión pública usa una base D1 de Cloudflare.
-- Clasifica la situación actual como favorable, esperar o evitar usando conjuntamente el historial de esa moneda y la expectativa neta estimada.
+- Clasifica la situación actual como favorable, esperar o evitar usando únicamente reglas elegidas en el periodo de calibración, confianza calificada y expectativa neta estimada.
 - No solicita credenciales, no tiene órdenes ni ejecuta compras. Cualquier decisión y operación se realiza por separado en Kalshi.
 
 ## Tecnología
@@ -25,6 +27,7 @@ Versión pública: [15-minute-market-intelligence.deposadaplazaronaldo.workers.d
 - Backend local: Node.js, TypeScript, Express y Zod.
 - Despliegue público: Cloudflare Worker, Static Assets y D1.
 - Actualización pública: GitHub Actions consulta la API oficial cada cinco minutos y publica una instantánea de sólo lectura; Cloudflare la conserva en D1 como respaldo.
+- Reentrenamiento público: otro flujo gratuito reentrena diariamente, aplica barreras mínimas de muestra, calibración y precisión, y sólo entonces publica el modelo validado.
 - Monorepo: pnpm workspaces.
 
 ## Abrir el código
@@ -37,6 +40,7 @@ Los dos archivos principales son:
 - `artifacts/api-server/src/services/kalshi-model.ts`: entrenamiento, predicción y evaluación temporal.
 - `artifacts/api-server/src/services/paper-signal-ledger.ts`: seguimiento local de predicciones posteriores al desarrollo.
 - `artifacts/kalshi-predictor/src/App.tsx`: interfaz del panel.
+- `artifacts/kalshi-predictor/src/i18n.ts`: textos en inglés/español y detección de idioma.
 - `cloudflare/worker.ts`: API pública y conexión de la versión desplegada.
 - `cloudflare/model-snapshot.json`: modelo entrenado y sus métricas de validación, sin credenciales ni datos personales.
 
@@ -92,7 +96,7 @@ pnpm run cloudflare:deploy
 
 El esquema de D1 está en `cloudflare/migrations`. Wrangler publica los archivos compilados de React y dirige únicamente `/api/*` al Worker.
 
-El flujo `.github/workflows/update-kalshi-snapshot.yml` renueva los precios cada cinco minutos. Guarda la instantánea en una rama técnica `live-data`, sin credenciales de Kalshi y sin acceso para operar. Si Kalshi o GitHub se retrasan, el panel muestra la hora exacta de la última instantánea almacenada.
+El flujo `.github/workflows/update-kalshi-snapshot.yml` renueva los precios cada cinco minutos. El flujo `.github/workflows/retrain-kalshi-model.yml` vuelve a entrenar y validar el modelo una vez al día. Ambos guardan la instantánea y el último modelo aprobado en una rama técnica `live-data`, sin credenciales de Kalshi y sin acceso para operar. Si Kalshi o GitHub se retrasan, el panel muestra la hora exacta de la última instantánea almacenada.
 
 ## Interpretación responsable
 

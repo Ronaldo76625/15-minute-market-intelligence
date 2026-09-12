@@ -10,6 +10,31 @@ const KALSHI_API_BASE_URL =
   "https://external-api.kalshi.com/trade-api/v2";
 const outputPath = path.resolve(import.meta.dirname, "model-snapshot.json");
 
+function assertPromotionQuality(
+  model: Awaited<ReturnType<typeof trainAndValidate>>,
+): void {
+  const failures = [
+    model.evaluationMarkets < 500
+      ? "fewer than 500 untouched evaluation markets"
+      : "",
+    model.holdoutMarkets < 100
+      ? "fewer than 100 qualified evaluation signals"
+      : "",
+    model.signalCoverage < 15 ? "qualified coverage below 15%" : "",
+    model.hitRateLowerBound < 80 ? "95% hit-rate lower bound below 80%" : "",
+    model.brierScore > 0.2 ? "Brier score above 0.20" : "",
+    model.brierSkillScore < -2
+      ? "Brier skill more than 2% below the market quote"
+      : "",
+    model.expectedCalibrationError > 8
+      ? "calibration gap above 8 percentage points"
+      : "",
+  ].filter(Boolean);
+  if (failures.length > 0) {
+    throw new Error(`Model failed promotion gates: ${failures.join(", ")}`);
+  }
+}
+
 const fetchKalshi: KalshiFetcher = async <T>(apiPath: string): Promise<T> => {
   let lastStatus: number | undefined;
 
@@ -36,10 +61,15 @@ const fetchKalshi: KalshiFetcher = async <T>(apiPath: string): Promise<T> => {
   );
 };
 
-const model = await trainAndValidate(fetchKalshi);
-await mkdir(path.dirname(outputPath), { recursive: true });
-await writeFile(outputPath, `${JSON.stringify(model, null, 2)}\n`, "utf8");
+async function main(): Promise<void> {
+  const model = await trainAndValidate(fetchKalshi);
+  assertPromotionQuality(model);
+  await mkdir(path.dirname(outputPath), { recursive: true });
+  await writeFile(outputPath, `${JSON.stringify(model, null, 2)}\n`, "utf8");
 
-console.log(
-  `Exported ${model.name}: ${model.trainingMarkets} train / ${model.holdoutMarkets} holdout markets.`,
-);
+  console.log(
+    `Exported ${model.name}: ${model.trainingMarkets} train / ${model.calibrationMarkets} calibration / ${model.evaluationMarkets} evaluation markets.`,
+  );
+}
+
+void main();

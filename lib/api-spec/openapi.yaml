@@ -273,7 +273,8 @@ components:
           type: number
     KalshiForwardAssetStats:
       type: object
-      required: [asset, tracked, pending, resolved, hitRate, netReturn, totalProfit]
+      required:
+        [asset, tracked, pending, resolved, hitRate, netReturn, totalProfit]
       properties:
         asset:
           type: string
@@ -291,7 +292,17 @@ components:
           type: number
     KalshiForwardTracking:
       type: object
-      required: [startedAt, tracked, pending, resolved, hitRate, netReturn, totalProfit, assets]
+      required:
+        [
+          startedAt,
+          tracked,
+          pending,
+          resolved,
+          hitRate,
+          netReturn,
+          totalProfit,
+          assets,
+        ]
       properties:
         startedAt:
           type: string
@@ -322,14 +333,23 @@ components:
         - activeSignals
         - averageConfidence
         - backtestHitRate
+        - hitRateLowerBound
         - simulatedReturn
         - netSimulatedReturn
         - modelName
         - modelTrainedAt
         - trainingMarkets
+        - calibrationMarkets
+        - evaluationMarkets
         - backtestSampleSize
         - baselineHitRate
         - brierScore
+        - marketBrierScore
+        - brierSkillScore
+        - logLoss
+        - expectedCalibrationError
+        - signalCoverage
+        - confidenceThreshold
         - assetStats
         - liveTracking
         - signals
@@ -351,6 +371,10 @@ components:
           type: number
         backtestHitRate:
           type: number
+          description: Accuracy of qualified predictions in the untouched chronological evaluation period.
+        hitRateLowerBound:
+          type: number
+          description: Conservative 95 percent Wilson lower confidence bound for the qualified hit rate.
         simulatedReturn:
           type: number
           description: Gross paper return in the holdout simulation before fees.
@@ -364,14 +388,37 @@ components:
           format: date-time
         trainingMarkets:
           type: integer
+        calibrationMarkets:
+          type: integer
+        evaluationMarkets:
+          type: integer
         backtestSampleSize:
           type: integer
+          description: Number of evaluation markets that passed the confidence policy.
         baselineHitRate:
           type: number
           description: Accuracy from choosing the side above 50 percent using only the market quote at the same cutoff.
         brierScore:
           type: number
           description: Mean squared error of the predicted probabilities on the chronological holdout set; lower is better.
+        marketBrierScore:
+          type: number
+          description: Brier score from the Kalshi midpoint probability on the same untouched markets.
+        brierSkillScore:
+          type: number
+          description: Percentage Brier improvement over the Kalshi midpoint; positive is better.
+        logLoss:
+          type: number
+          description: Logarithmic loss on every market in the untouched chronological evaluation set; lower is better.
+        expectedCalibrationError:
+          type: number
+          description: Weighted absolute calibration gap in percentage points across ten probability bins; lower is better.
+        signalCoverage:
+          type: number
+          description: Percentage of evaluation markets that passed the confidence policy.
+        confidenceThreshold:
+          type: number
+          description: Minimum calibrated side probability required by the selected signal policy.
         assetStats:
           type: array
           items:

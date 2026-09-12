@@ -14,7 +14,7 @@
     "cloudflare:migrate:remote": "wrangler d1 migrations apply kalshi-predictor-signals --remote",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
-    "model:refresh": "pnpm exec tsx ./cloudflare/export-model.ts",
+    "model:refresh": "pnpm --filter @workspace/scripts exec tsx ../cloudflare/export-model.ts",
     "live:generate": "pnpm --filter @workspace/scripts exec tsx ../cloudflare/generate-live-snapshot.ts"
   },
   "private": true,
