@@ -47,6 +47,17 @@ export const KalshiSignalRecommendation = {
   avoid: 'avoid',
 } as const;
 
+export type KalshiSignalQualificationReason = typeof KalshiSignalQualificationReason[keyof typeof KalshiSignalQualificationReason];
+
+
+export const KalshiSignalQualificationReason = {
+  ready: 'ready',
+  outside_window: 'outside_window',
+  insufficient_history: 'insufficient_history',
+  stale_candles: 'stale_candles',
+  wide_spread: 'wide_spread',
+} as const;
+
 export interface KalshiSignal {
   id: string;
   ticker: string;
@@ -57,6 +68,18 @@ export interface KalshiSignal {
   entryPrice: number;
   modelProbability: number;
   marketProbability: number;
+  /** Conservative model probability that the contract resolves YES. */
+  yesProbability: number;
+  /** Conservative model probability that the contract resolves NO; complements yesProbability to 100. */
+  noProbability: number;
+  /** Calibrated YES probability before the conservative uncertainty adjustment. */
+  rawYesProbability: number;
+  rawNoProbability: number;
+  /** YES probability implied by the current Kalshi midpoint quote. */
+  marketYesProbability: number;
+  marketNoProbability: number;
+  /** Percentage-point safety adjustment based on holdout calibration error, finite evaluation size, and current spread. */
+  uncertaintyMargin: number;
   edge: number;
   confidence: number;
   liquidity: string;
@@ -72,6 +95,12 @@ export interface KalshiSignal {
   score: number;
   explanation: string;
   updatedAt: string;
+  secondsToClose: number;
+  latestCandleAgeSeconds: number;
+  dataQualityOk: boolean;
+  /** Whether the signal has current candles and falls inside the model's validated timing window. */
+  isQualified: boolean;
+  qualificationReason: KalshiSignalQualificationReason;
 }
 
 export interface KalshiPricePoint {
@@ -145,10 +174,22 @@ export interface KalshiForwardTracking {
   assets: KalshiForwardAssetStats[];
 }
 
+export type KalshiDashboardDataFreshness = typeof KalshiDashboardDataFreshness[keyof typeof KalshiDashboardDataFreshness];
+
+
+export const KalshiDashboardDataFreshness = {
+  live: 'live',
+  delayed: 'delayed',
+  stale: 'stale',
+} as const;
+
 export interface KalshiDashboard {
   asOf: string;
   source: string;
   isLive: boolean;
+  dataFreshness: KalshiDashboardDataFreshness;
+  dataAgeSeconds: number;
+  hasUsablePredictions: boolean;
   totalMarkets: number;
   activeSignals: number;
   averageConfidence: number;

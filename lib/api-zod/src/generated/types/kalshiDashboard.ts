@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { KalshiAssetStats } from './kalshiAssetStats';
+import type { KalshiDashboardDataFreshness } from './kalshiDashboardDataFreshness';
 import type { KalshiForwardTracking } from './kalshiForwardTracking';
 import type { KalshiMarket } from './kalshiMarket';
 import type { KalshiPerformancePoint } from './kalshiPerformancePoint';
@@ -16,6 +17,9 @@ export interface KalshiDashboard {
   asOf: string;
   source: string;
   isLive: boolean;
+  dataFreshness: KalshiDashboardDataFreshness;
+  dataAgeSeconds: number;
+  hasUsablePredictions: boolean;
   totalMarkets: number;
   activeSignals: number;
   averageConfidence: number;

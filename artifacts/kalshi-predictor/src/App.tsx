@@ -99,6 +99,48 @@ function formatTime(value: string, language: Language) {
       });
 }
 
+function qualificationLabel(value: string, language: Language) {
+  const copy = translations[language];
+  if (value === "ready") return copy.readySignal;
+  if (value === "stale_candles") return copy.staleCandles;
+  if (value === "insufficient_history") return copy.insufficientHistory;
+  if (value === "wide_spread") return copy.wideSpread;
+  return copy.outsideWindow;
+}
+
+function MarketCloseTime({
+  closeTime,
+  language,
+}: {
+  closeTime: string;
+  language: Language;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  const copy = translations[language];
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const remaining = Math.max(
+    0,
+    Math.floor((Date.parse(closeTime) - now) / 1_000),
+  );
+  const minutes = Math.floor(remaining / 60)
+    .toString()
+    .padStart(2, "0");
+  const seconds = (remaining % 60).toString().padStart(2, "0");
+  return (
+    <div>
+      <p className="font-mono text-xs">
+        {copy.closesIn(`${minutes}:${seconds}`)}
+      </p>
+      <p className="mt-0.5 text-[10px] text-muted-foreground">
+        {copy.localCloseTime(formatTime(closeTime, language))}
+      </p>
+    </div>
+  );
+}
+
 function csvDownload(filename: string, rows: Array<Record<string, unknown>>) {
   if (!rows.length) return;
   const keys = Object.keys(rows[0]);
@@ -219,7 +261,7 @@ function Home() {
     () => window.matchMedia("(prefers-color-scheme: dark)").matches,
   );
   const [category, setCategory] = useState("");
-  const [minConfidence, setMinConfidence] = useState(90);
+  const [minConfidence, setMinConfidence] = useState(50);
   const [limit, setLimit] = useState(8);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [intervalMs, setIntervalMs] = useState(intervals[0].ms);
@@ -230,7 +272,6 @@ function Home() {
   );
   const [sortDesc, setSortDesc] = useState(true);
   const refreshRef = useRef<HTMLDivElement>(null);
-  const adoptedModelThreshold = useRef(false);
   const copy = translations[language];
   const locale = language === "es" ? "es-MX" : "en-US";
   const isDark =
@@ -260,12 +301,6 @@ function Home() {
         return sortDesc ? -result : result;
       });
   }, [dashboard?.markets, search, sortDesc, sortKey]);
-
-  useEffect(() => {
-    if (!dashboard || adoptedModelThreshold.current) return;
-    setMinConfidence(dashboard.confidenceThreshold);
-    adoptedModelThreshold.current = true;
-  }, [dashboard]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
@@ -497,6 +532,49 @@ function Home() {
           </div>
         </header>
 
+        {dashboard ? (
+          <div
+            data-testid="data-freshness-banner"
+            className={`mb-6 flex flex-col gap-1 rounded-xl border px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between ${
+              dashboard.dataFreshness === "live"
+                ? "border-accent/30 bg-accent/8"
+                : dashboard.dataFreshness === "delayed"
+                  ? "border-primary/35 bg-primary/8"
+                  : "border-destructive/35 bg-destructive/8"
+            }`}
+          >
+            <div className="flex items-center gap-2 font-semibold">
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  dashboard.dataFreshness === "live"
+                    ? "bg-accent"
+                    : dashboard.dataFreshness === "delayed"
+                      ? "bg-primary"
+                      : "bg-destructive"
+                }`}
+              />
+              {dashboard.dataFreshness === "live"
+                ? copy.liveData
+                : dashboard.dataFreshness === "delayed"
+                  ? copy.delayedData
+                  : copy.staleData}
+              <span className="font-mono text-[10px] font-normal text-muted-foreground">
+                ·{" "}
+                {copy.dataAge(
+                  Math.max(0, Math.floor(dashboard.dataAgeSeconds / 60)),
+                )}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {dashboard.dataFreshness === "live"
+                ? copy.liveDataBody
+                : dashboard.dataFreshness === "delayed"
+                  ? copy.delayedDataBody
+                  : copy.staleDataBody}
+            </p>
+          </div>
+        ) : null}
+
         <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
             {
@@ -553,8 +631,15 @@ function Home() {
           ))}
         </div>
 
-        <section className="data-card mb-6 rounded-xl p-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <details className="data-card group mb-6 rounded-xl">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold">
+            <span>{copy.advancedFilters}</span>
+            <ChevronDown
+              size={16}
+              className="transition group-open:rotate-180"
+            />
+          </summary>
+          <div className="flex flex-col gap-4 border-t border-border/70 p-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-accent">
                 {copy.predictionControls}
@@ -618,7 +703,7 @@ function Home() {
               </label>
             </div>
           </div>
-        </section>
+        </details>
 
         <div className="mb-6 grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
           <Panel
@@ -651,7 +736,7 @@ function Home() {
                     <article
                       data-testid={`signal-${signal.id}`}
                       key={signal.id}
-                      className="group grid gap-3 p-4 transition hover:bg-muted/45 sm:grid-cols-[auto_1fr_auto] sm:items-center"
+                      className="group grid gap-3 p-4 transition hover:bg-muted/45 sm:grid-cols-[auto_1fr] sm:items-start"
                     >
                       <div className="flex items-center gap-3 sm:block">
                         <span className="font-mono text-xs text-muted-foreground">
@@ -680,59 +765,122 @@ function Home() {
                             )}
                           </span>
                         </div>
-                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                          {copy.signalExplanation(
-                            dashboard.modelName,
-                            formatPercent(signal.modelProbability),
-                            signal.side,
-                            formatPercent(signal.marketProbability),
-                            signal.asset ?? "",
-                            formatPercent(assetReturn),
-                          )}
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-3 font-mono text-[10px] text-muted-foreground">
-                          <span>
-                            {copy.model}{" "}
-                            <b className="text-primary">
-                              {formatPercent(signal.modelProbability)}
-                            </b>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <div className="rounded-lg border border-accent/25 bg-accent/5 p-3">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">
+                              {copy.yesOutcome}
+                            </p>
+                            <p className="mt-1 font-mono text-xl font-bold text-accent">
+                              {formatPercent(signal.yesProbability)}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-right">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-destructive">
+                              {copy.noOutcome}
+                            </p>
+                            <p className="mt-1 font-mono text-xl font-bold text-destructive">
+                              {formatPercent(signal.noProbability)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-muted">
+                          <span
+                            className="bg-accent"
+                            style={{ width: `${signal.yesProbability}%` }}
+                          />
+                          <span
+                            className="bg-destructive/70"
+                            style={{ width: `${signal.noProbability}%` }}
+                          />
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[10px]">
+                          <span
+                            className={
+                              signal.isQualified
+                                ? "text-accent"
+                                : "text-primary"
+                            }
+                          >
+                            {qualificationLabel(
+                              signal.qualificationReason,
+                              language,
+                            )}
                           </span>
-                          <span>
-                            {copy.market}{" "}
-                            <b className="text-foreground">
-                              {formatPercent(signal.marketProbability)}
-                            </b>
-                          </span>
-                          <span>
-                            {copy.edge}{" "}
-                            <b className="text-accent">
-                              {formatPercent(signal.edge)}
-                            </b>
-                          </span>
-                          <span>
-                            {copy.netEv}{" "}
-                            <b className="text-foreground">
-                              {formatPercent(signal.netExpectedValue)}
-                            </b>
-                          </span>
-                          <span>
-                            {copy.fee}{" "}
-                            <b className="text-foreground">
-                              {formatPrice(signal.estimatedFee)}
-                            </b>
-                          </span>
-                          <span>
-                            {copy.closes} {signal.timeToClose}
+                          <span className="text-muted-foreground">
+                            {copy.safetyAdjustment} · -
+                            {formatPercent(signal.uncertaintyMargin)}
                           </span>
                         </div>
-                      </div>
-                      <div className="text-left sm:text-right">
-                        <p className="font-mono text-lg font-medium text-primary">
-                          {formatPercent(signal.confidence)}
-                        </p>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                          {copy.predictedChance}
-                        </p>
+                        <details className="mt-3 rounded-md border border-border/70 bg-background/40 px-3 py-2">
+                          <summary className="cursor-pointer text-xs font-semibold text-muted-foreground">
+                            {copy.showDetails}
+                          </summary>
+                          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                            {copy.signalExplanation(
+                              dashboard.modelName,
+                              formatPercent(signal.modelProbability),
+                              signal.side,
+                              formatPercent(signal.marketProbability),
+                              signal.asset ?? "",
+                              formatPercent(assetReturn),
+                            )}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-3 font-mono text-[10px] text-muted-foreground">
+                            <span>
+                              {copy.model}{" "}
+                              <b className="text-primary">
+                                {formatPercent(signal.modelProbability)}
+                              </b>
+                            </span>
+                            <span>
+                              {copy.market}{" "}
+                              <b className="text-foreground">
+                                {formatPercent(signal.marketProbability)}
+                              </b>
+                            </span>
+                            <span>
+                              {copy.edge}{" "}
+                              <b className="text-accent">
+                                {formatPercent(signal.edge)}
+                              </b>
+                            </span>
+                            <span>
+                              {copy.netEv}{" "}
+                              <b className="text-foreground">
+                                {formatPercent(signal.netExpectedValue)}
+                              </b>
+                            </span>
+                            <span>
+                              {copy.fee}{" "}
+                              <b className="text-foreground">
+                                {formatPrice(signal.estimatedFee)}
+                              </b>
+                            </span>
+                            <span>
+                              {copy.closes} {signal.timeToClose}
+                            </span>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-3 font-mono text-[10px] text-muted-foreground">
+                            <span>
+                              {copy.rawProbability} YES{" "}
+                              <b className="text-foreground">
+                                {formatPercent(signal.rawYesProbability)}
+                              </b>
+                            </span>
+                            <span>
+                              {copy.safetyAdjustment}{" "}
+                              <b className="text-foreground">
+                                {formatPercent(signal.uncertaintyMargin)}
+                              </b>
+                            </span>
+                            <span>
+                              {copy.market} YES{" "}
+                              <b className="text-foreground">
+                                {formatPercent(signal.marketYesProbability)}
+                              </b>
+                            </span>
+                          </div>
+                        </details>
                       </div>
                     </article>
                   );
@@ -1183,8 +1331,8 @@ function Home() {
                     ["category", copy.category],
                     ["closeTime", copy.closesColumn],
                     ["volume", copy.volume],
-                    ["yesPrice", "YES"],
-                    ["noPrice", "NO"],
+                    ["yesPrice", copy.yesPriceColumn],
+                    ["noPrice", copy.noPriceColumn],
                     ["liquidity", copy.liquidity],
                   ].map(([key, label]) => (
                     <th key={key} className="px-5 py-3 font-mono font-medium">
@@ -1241,8 +1389,11 @@ function Home() {
                       <td className="px-5 py-3.5 text-sm text-muted-foreground">
                         {market.category}
                       </td>
-                      <td className="px-5 py-3.5 font-mono text-xs">
-                        {formatTime(market.closeTime, language)}
+                      <td className="px-5 py-3.5">
+                        <MarketCloseTime
+                          closeTime={market.closeTime}
+                          language={language}
+                        />
                       </td>
                       <td className="px-5 py-3.5 font-mono text-xs">
                         {market.volume.toLocaleString(locale)}

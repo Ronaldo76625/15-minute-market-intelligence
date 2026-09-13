@@ -2,22 +2,25 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "15-minute-market-intelligence",
   "main": "./cloudflare/worker.ts",
-  "compatibility_date": "2026-09-12",
+  "compatibility_date": "2026-09-13",
+  "triggers": {
+    "crons": ["*/5 * * * *"],
+  },
   "assets": {
     "directory": "./artifacts/kalshi-predictor/dist/public",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*"],
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "kalshi-predictor-signals",
       "database_id": "f7e50354-61f1-45ce-b618-a67c3b9b626a",
-      "migrations_dir": "./cloudflare/migrations"
-    }
+      "migrations_dir": "./cloudflare/migrations",
+    },
   ],
   "observability": {
-    "enabled": true
-  }
+    "enabled": true,
+  },
 }

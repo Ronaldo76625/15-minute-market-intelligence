@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { KalshiSignalQualificationReason } from './kalshiSignalQualificationReason';
 import type { KalshiSignalRecommendation } from './kalshiSignalRecommendation';
 import type { KalshiSignalSide } from './kalshiSignalSide';
 import type { KalshiSignalStatus } from './kalshiSignalStatus';
@@ -19,6 +20,18 @@ export interface KalshiSignal {
   entryPrice: number;
   modelProbability: number;
   marketProbability: number;
+  /** Conservative model probability that the contract resolves YES. */
+  yesProbability: number;
+  /** Conservative model probability that the contract resolves NO; complements yesProbability to 100. */
+  noProbability: number;
+  /** Calibrated YES probability before the conservative uncertainty adjustment. */
+  rawYesProbability: number;
+  rawNoProbability: number;
+  /** YES probability implied by the current Kalshi midpoint quote. */
+  marketYesProbability: number;
+  marketNoProbability: number;
+  /** Percentage-point safety adjustment based on holdout calibration error, finite evaluation size, and current spread. */
+  uncertaintyMargin: number;
   edge: number;
   confidence: number;
   liquidity: string;
@@ -34,4 +47,10 @@ export interface KalshiSignal {
   score: number;
   explanation: string;
   updatedAt: string;
+  secondsToClose: number;
+  latestCandleAgeSeconds: number;
+  dataQualityOk: boolean;
+  /** Whether the signal has current candles and falls inside the model's validated timing window. */
+  isQualified: boolean;
+  qualificationReason: KalshiSignalQualificationReason;
 }

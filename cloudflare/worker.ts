@@ -27,6 +27,13 @@ const ASSET_BY_SERIES: Record<(typeof LIVE_SERIES)[number], string> = {
 };
 const KALSHI_TAKER_FEE_RATE = 0.07;
 const SNAPSHOT_CACHE_SECONDS = 30;
+const FRESH_SNAPSHOT_MS = 7 * 60 * 1_000;
+const DELAYED_SNAPSHOT_MS = 15 * 60 * 1_000;
+const MIN_PREDICTION_SECONDS = 3 * 60;
+const MAX_PREDICTION_SECONDS = 7 * 60;
+const MAX_CANDLE_AGE_SECONDS = 3 * 60;
+const MIN_CANDLE_COUNT = 3;
+const MAX_SUPPORTED_SPREAD = 0.1;
 const PUBLISHED_SNAPSHOT_URL =
   "https://raw.githubusercontent.com/Ronaldo76625/15-minute-market-intelligence/live-data/live-data.json";
 const bundledModel = modelSnapshot as ValidatedKalshiModel;
@@ -70,7 +77,12 @@ type StoredSnapshot = {
   asOf: string;
   model: ValidatedKalshiModel;
 };
-type LiveSnapshot = StoredSnapshot & { liveTracking: ForwardTrackingStats };
+type DataFreshness = "live" | "delayed" | "stale";
+type LiveSnapshot = StoredSnapshot & {
+  liveTracking: ForwardTrackingStats;
+  dataFreshness: DataFreshness;
+  dataAgeSeconds: number;
+};
 export type KalshiSettlement = {
   ticker: string;
   result: "yes" | "no";
@@ -151,6 +163,7 @@ function assetFor(market: KalshiApiMarket): string {
 function toDashboardMarket(market: KalshiApiMarket) {
   return {
     ticker: market.ticker,
+    asset: assetFor(market),
     title: market.title,
     category: "Crypto",
     closeTime: market.close_time,
@@ -177,18 +190,45 @@ function refreshSignalTimers(
   const closeTimeByTicker = new Map(
     markets.map((market) => [market.ticker, market.closeTime]),
   );
-  return signals.map((signal) => {
+  return signals.flatMap((signal) => {
     const closeTime = closeTimeByTicker.get(signal.ticker);
-    if (!closeTime) return signal;
+    if (!closeTime) return [];
     const secondsToClose = Math.max(
       0,
       Math.floor((Date.parse(closeTime) - Date.now()) / 1_000),
     );
-    return {
-      ...signal,
-      secondsToClose,
-      timeToClose: timeToClose(closeTime),
-    };
+    if (secondsToClose <= 0) return [];
+    const insideValidatedWindow =
+      secondsToClose >= MIN_PREDICTION_SECONDS &&
+      secondsToClose <= MAX_PREDICTION_SECONDS;
+    const latestCandleAgeSeconds = Math.floor(
+      (Date.now() - Date.parse(signal.updatedAt)) / 1_000,
+    );
+    const candlesAreRecent =
+      Number.isFinite(latestCandleAgeSeconds) &&
+      latestCandleAgeSeconds >= -60 &&
+      latestCandleAgeSeconds <= MAX_CANDLE_AGE_SECONDS;
+    const dataQualityOk = signal.dataQualityOk && candlesAreRecent;
+    const isQualified = dataQualityOk && insideValidatedWindow;
+    return [
+      {
+        ...signal,
+        secondsToClose,
+        timeToClose: timeToClose(closeTime),
+        latestCandleAgeSeconds,
+        dataQualityOk,
+        isQualified,
+        qualificationReason: !candlesAreRecent
+          ? "stale_candles"
+          : !signal.dataQualityOk
+            ? signal.qualificationReason
+            : insideValidatedWindow
+              ? "ready"
+              : "outside_window",
+        recommendation: isQualified ? signal.recommendation : "wait",
+        status: isQualified ? signal.status : "watch",
+      },
+    ];
   });
 }
 
@@ -202,16 +242,39 @@ function buildSignal(
     Math.floor((Date.parse(market.close_time) - Date.now()) / 1_000),
   );
   const prediction = predictLiveMarket(market, candles, selectedModel);
-  const side =
-    prediction.yesProbability >= 0.5 ? ("YES" as const) : ("NO" as const);
+  const rawYesProbability = prediction.yesProbability;
+  const calibrationPenalty = clamp(
+    selectedModel.expectedCalibrationError / 100,
+    0.005,
+    0.15,
+  );
+  const finiteSamplePenalty = clamp(
+    1.96 *
+      Math.sqrt(
+        (rawYesProbability * (1 - rawYesProbability)) /
+          Math.max(30, selectedModel.evaluationMarkets),
+      ),
+    0,
+    0.08,
+  );
+  const uncertaintyMargin = clamp(
+    calibrationPenalty + finiteSamplePenalty + prediction.spread / 2,
+    0.01,
+    0.2,
+  );
+  const conservativeYesProbability =
+    rawYesProbability >= 0.5
+      ? Math.max(0.5, rawYesProbability - uncertaintyMargin)
+      : Math.min(0.5, rawYesProbability + uncertaintyMargin);
+  const side = rawYesProbability >= 0.5 ? ("YES" as const) : ("NO" as const);
   const marketProbability =
     (side === "YES"
       ? prediction.marketYesProbability
       : 1 - prediction.marketYesProbability) * 100;
   const modelProbability =
     (side === "YES"
-      ? prediction.yesProbability
-      : 1 - prediction.yesProbability) * 100;
+      ? conservativeYesProbability
+      : 1 - conservativeYesProbability) * 100;
   const quotedEntry =
     side === "YES"
       ? numberFrom(market.yes_ask_dollars)
@@ -219,7 +282,7 @@ function buildSignal(
   const entryPrice =
     quotedEntry || (side === "YES" ? yesPrice(market) : noPrice(market));
   const edge = modelProbability - marketProbability;
-  const confidence = Math.round(modelProbability);
+  const confidence = rounded(modelProbability);
   const expectedValue =
     entryPrice > 0
       ? ((modelProbability / 100 - entryPrice) / entryPrice) * 100
@@ -235,17 +298,46 @@ function buildSignal(
   const assetHistory = selectedModel.assetStats.find(
     (stats) => stats.asset === asset,
   );
+  const latestCandleTimestamp = candles.at(-1)?.end_period_ts;
+  const latestCandleAgeSeconds = latestCandleTimestamp
+    ? Math.floor(Date.now() / 1_000 - latestCandleTimestamp)
+    : Number.POSITIVE_INFINITY;
+  const hasEnoughCandles = candles.length >= MIN_CANDLE_COUNT;
+  const candlesAreRecent =
+    latestCandleAgeSeconds >= -60 &&
+    latestCandleAgeSeconds <= MAX_CANDLE_AGE_SECONDS;
+  const spreadIsSupported = prediction.spread <= MAX_SUPPORTED_SPREAD;
+  const insideValidatedWindow =
+    secondsToClose >= MIN_PREDICTION_SECONDS &&
+    secondsToClose <= MAX_PREDICTION_SECONDS;
+  const dataQualityOk =
+    hasEnoughCandles && candlesAreRecent && spreadIsSupported;
+  const qualificationReason = !hasEnoughCandles
+    ? ("insufficient_history" as const)
+    : !candlesAreRecent
+      ? ("stale_candles" as const)
+      : !spreadIsSupported
+        ? ("wide_spread" as const)
+        : !insideValidatedWindow
+          ? ("outside_window" as const)
+          : ("ready" as const);
+  const isQualified = dataQualityOk && insideValidatedWindow;
   const qualifiedConfidence =
     confidence >= (selectedModel.confidenceThreshold ?? 60);
   const validationApproved = (selectedModel.reliableAssets ?? []).includes(
     asset,
   );
   const recommendation =
-    validationApproved && qualifiedConfidence && netExpectedValue >= 3
+    isQualified &&
+    validationApproved &&
+    qualifiedConfidence &&
+    netExpectedValue >= 3
       ? ("favorable" as const)
-      : qualifiedConfidence && netExpectedValue > 0
+      : isQualified && qualifiedConfidence && netExpectedValue > 0
         ? ("wait" as const)
-        : ("avoid" as const);
+        : isQualified
+          ? ("avoid" as const)
+          : ("wait" as const);
   const status =
     recommendation === "favorable"
       ? ("strong" as const)
@@ -263,6 +355,13 @@ function buildSignal(
     entryPrice: rounded(entryPrice, 4),
     modelProbability: rounded(modelProbability),
     marketProbability: rounded(marketProbability),
+    yesProbability: rounded(conservativeYesProbability * 100),
+    noProbability: rounded((1 - conservativeYesProbability) * 100),
+    rawYesProbability: rounded(rawYesProbability * 100),
+    rawNoProbability: rounded((1 - rawYesProbability) * 100),
+    marketYesProbability: rounded(prediction.marketYesProbability * 100),
+    marketNoProbability: rounded((1 - prediction.marketYesProbability) * 100),
+    uncertaintyMargin: rounded(uncertaintyMargin * 100),
     edge: rounded(edge),
     confidence,
     liquidity: compactUsd(numberFrom(market.liquidity_dollars)),
@@ -273,11 +372,17 @@ function buildSignal(
     netExpectedValue: rounded(netExpectedValue),
     recommendation,
     score: rounded(confidence + clamp(netExpectedValue, -20, 20)),
-    explanation: `${selectedModel.name} estimates ${modelProbability.toFixed(1)}% for ${side}, versus ${marketProbability.toFixed(1)}% implied by the current quote. ${asset} returned an estimated ${assetHistory?.netReturn.toFixed(1) ?? "0.0"}% after fees in its unseen-market test; spread is ${(prediction.spread * 100).toFixed(1)}¢.`,
+    explanation: `${selectedModel.name} estimates ${(rawYesProbability * 100).toFixed(1)}% YES before a conservative ${(uncertaintyMargin * 100).toFixed(1)} point uncertainty adjustment. The displayed YES/NO probabilities use that safer estimate. ${asset} returned an estimated ${assetHistory?.netReturn.toFixed(1) ?? "0.0"}% after fees in its unseen-market test; spread is ${(prediction.spread * 100).toFixed(1)}¢.`,
     updatedAt: new Date(
       (candles.at(-1)?.end_period_ts ?? Math.floor(Date.now() / 1_000)) * 1_000,
     ).toISOString(),
     secondsToClose,
+    latestCandleAgeSeconds: Number.isFinite(latestCandleAgeSeconds)
+      ? latestCandleAgeSeconds
+      : -1,
+    dataQualityOk,
+    isQualified,
+    qualificationReason,
   };
 }
 
@@ -324,7 +429,12 @@ async function fetchActiveMarkets(): Promise<KalshiApiMarket[]> {
     markets.push(...response.markets);
     await new Promise((resolve) => setTimeout(resolve, 175));
   }
-  return markets;
+  const now = Date.now();
+  return markets.filter(
+    (market) =>
+      Number.isFinite(Date.parse(market.close_time)) &&
+      Date.parse(market.close_time) > now,
+  );
 }
 
 async function fetchCandlesForMarkets(
@@ -416,7 +526,10 @@ async function updatePaperSignalLedger(
 ): Promise<ForwardTrackingStats> {
   const now = new Date().toISOString();
   const eligible = signals.filter(
-    (signal) => signal.secondsToClose >= 240 && signal.secondsToClose <= 420,
+    (signal) =>
+      signal.isQualified &&
+      signal.secondsToClose >= 240 &&
+      signal.secondsToClose <= 420,
   );
 
   if (eligible.length > 0) {
@@ -565,6 +678,97 @@ async function writeStoredSnapshot(
     .run();
 }
 
+function snapshotAgeMs(snapshot: StoredSnapshot): number {
+  return Math.max(0, Date.now() - Date.parse(snapshot.asOf));
+}
+
+function snapshotFreshness(snapshot: StoredSnapshot): DataFreshness {
+  const age = snapshotAgeMs(snapshot);
+  if (age <= FRESH_SNAPSHOT_MS) return "live";
+  if (age <= DELAYED_SNAPSHOT_MS) return "delayed";
+  return "stale";
+}
+
+function removeExpiredMarkets(snapshot: StoredSnapshot): StoredSnapshot {
+  const now = Date.now();
+  const markets = snapshot.markets.filter(
+    (market) =>
+      Number.isFinite(Date.parse(market.closeTime)) &&
+      Date.parse(market.closeTime) > now,
+  );
+  const tickers = new Set(markets.map((market) => market.ticker));
+  return {
+    ...snapshot,
+    markets,
+    signals: refreshSignalTimers(
+      snapshot.signals.filter((signal) => tickers.has(signal.ticker)),
+      markets,
+    ),
+  };
+}
+
+function isUsableFreshSnapshot(
+  snapshot: StoredSnapshot | undefined,
+): snapshot is StoredSnapshot {
+  if (!snapshot || snapshotAgeMs(snapshot) > FRESH_SNAPSHOT_MS) return false;
+  return snapshot.markets.some(
+    (market) => Date.parse(market.closeTime) > Date.now(),
+  );
+}
+
+async function fetchPublishedSnapshot(): Promise<{
+  snapshot: StoredSnapshot;
+  settlements: KalshiSettlement[];
+}> {
+  const publishedUrl = new URL(PUBLISHED_SNAPSHOT_URL);
+  publishedUrl.searchParams.set(
+    "refresh",
+    Math.floor(Date.now() / 60_000).toString(),
+  );
+  const response = await fetch(publishedUrl, {
+    headers: { Accept: "application/json" },
+    cf: { cacheEverything: true, cacheTtl: 60 },
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
+  const published = (await response.json()) as {
+    snapshot?: unknown;
+    settlements?: unknown;
+  };
+  if (!isStoredSnapshot(published.snapshot)) {
+    throw new Error("Published snapshot is invalid or stale");
+  }
+  const settlements = Array.isArray(published.settlements)
+    ? published.settlements.filter(
+        (item): item is KalshiSettlement =>
+          Boolean(item) &&
+          typeof item === "object" &&
+          typeof (item as KalshiSettlement).ticker === "string" &&
+          ((item as KalshiSettlement).result === "yes" ||
+            (item as KalshiSettlement).result === "no"),
+      )
+    : [];
+  return { snapshot: published.snapshot, settlements };
+}
+
+async function refreshLiveSnapshot(env: Env): Promise<void> {
+  const snapshot = await generateLiveMarketSnapshot();
+  let settlements: KalshiSettlement[] = [];
+  try {
+    settlements = await fetchRecentSettlements();
+  } catch (error) {
+    console.warn("Unable to refresh recent settlements", error);
+  }
+  await writeStoredSnapshot(env, snapshot);
+  const current = removeExpiredMarkets(snapshot);
+  await updatePaperSignalLedger(
+    env,
+    current.signals,
+    settlements,
+    snapshot.model.name,
+  );
+}
+
 async function getLiveSnapshot(
   env: Env,
   request: Request,
@@ -580,48 +784,40 @@ async function getLiveSnapshot(
   let stored: StoredSnapshot | undefined;
   let settlements: KalshiSettlement[] = [];
   try {
-    const publishedUrl = new URL(PUBLISHED_SNAPSHOT_URL);
-    publishedUrl.searchParams.set(
-      "refresh",
-      Math.floor(Date.now() / 60_000).toString(),
-    );
-    const response = await fetch(publishedUrl, {
-      headers: { Accept: "application/json" },
-      cf: { cacheEverything: true, cacheTtl: 60 },
-      signal: AbortSignal.timeout(8_000),
-    });
-    if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
-    const published = (await response.json()) as {
-      snapshot?: unknown;
-      settlements?: unknown;
-    };
-    if (!isStoredSnapshot(published.snapshot)) {
-      throw new Error("Published snapshot is invalid");
-    }
-    stored = published.snapshot;
-    settlements = Array.isArray(published.settlements)
-      ? published.settlements.filter(
-          (item): item is KalshiSettlement =>
-            Boolean(item) &&
-            typeof item === "object" &&
-            typeof (item as KalshiSettlement).ticker === "string" &&
-            ((item as KalshiSettlement).result === "yes" ||
-              (item as KalshiSettlement).result === "no"),
-        )
-      : [];
-    await writeStoredSnapshot(env, stored);
-  } catch (error) {
-    console.error("Unable to load the published Kalshi snapshot", error);
     stored = await readStoredSnapshot(env);
+  } catch (error) {
+    console.warn("Unable to read the stored Kalshi snapshot", error);
   }
-  if (!stored) {
-    stored = await generateLiveMarketSnapshot();
-    await writeStoredSnapshot(env, stored);
+  if (!isUsableFreshSnapshot(stored)) {
+    try {
+      const published = await fetchPublishedSnapshot();
+      if (isUsableFreshSnapshot(published.snapshot)) {
+        stored = published.snapshot;
+        settlements = published.settlements;
+        await writeStoredSnapshot(env, stored);
+      }
+    } catch (error) {
+      console.warn("Unable to load a fresh published Kalshi snapshot", error);
+    }
   }
-  const currentSignals = refreshSignalTimers(stored.signals, stored.markets);
+  if (!isUsableFreshSnapshot(stored)) {
+    try {
+      const live = await generateLiveMarketSnapshot();
+      stored = live;
+      await writeStoredSnapshot(env, live);
+    } catch (error) {
+      console.error("Unable to refresh directly from Kalshi", error);
+    }
+  }
+  if (!stored) throw new Error("No verified Kalshi snapshot is available");
+  const current = removeExpiredMarkets(stored);
+  const dataFreshness = snapshotFreshness(current);
+  const currentSignals = dataFreshness === "stale" ? [] : current.signals;
   const snapshot: LiveSnapshot = {
-    ...stored,
+    ...current,
     signals: currentSignals,
+    dataFreshness,
+    dataAgeSeconds: Math.floor(snapshotAgeMs(current) / 1_000),
     liveTracking: await updatePaperSignalLedger(
       env,
       currentSignals,
@@ -652,6 +848,13 @@ function isStoredSnapshot(
     (allowStale || timestamp >= Date.now() - 2 * 60 * 60 * 1_000) &&
     Array.isArray(candidate.markets) &&
     Array.isArray(candidate.signals) &&
+    candidate.signals.every(
+      (signal) =>
+        Number.isFinite(signal.yesProbability) &&
+        Number.isFinite(signal.noProbability) &&
+        typeof signal.dataQualityOk === "boolean" &&
+        typeof signal.isQualified === "boolean",
+    ) &&
     Array.isArray(candidate.priceHistory) &&
     isValidatedModel(candidate.model)
   );
@@ -721,8 +924,11 @@ function dashboardResponse(snapshot: LiveSnapshot, url: URL) {
 
   return {
     asOf: snapshot.asOf,
-    source: `Kalshi public REST API · refreshed every 5 min · ${activeModel.name}`,
-    isLive: true,
+    source: `Kalshi public REST API · Cloudflare scheduled refresh · ${activeModel.name}`,
+    isLive: snapshot.dataFreshness === "live" && markets.length > 0,
+    dataFreshness: snapshot.dataFreshness,
+    dataAgeSeconds: snapshot.dataAgeSeconds,
+    hasUsablePredictions: signals.some((signal) => signal.isQualified),
     totalMarkets: markets.length,
     activeSignals: signals.length,
     averageConfidence,
@@ -800,5 +1006,8 @@ export default {
     }
 
     return env.ASSETS.fetch(request);
+  },
+  async scheduled(_controller, env, ctx): Promise<void> {
+    ctx.waitUntil(refreshLiveSnapshot(env));
   },
 } satisfies ExportedHandler<Env>;

@@ -128,6 +128,13 @@ components:
         - entryPrice
         - modelProbability
         - marketProbability
+        - yesProbability
+        - noProbability
+        - rawYesProbability
+        - rawNoProbability
+        - marketYesProbability
+        - marketNoProbability
+        - uncertaintyMargin
         - edge
         - confidence
         - liquidity
@@ -140,6 +147,11 @@ components:
         - score
         - explanation
         - updatedAt
+        - secondsToClose
+        - latestCandleAgeSeconds
+        - dataQualityOk
+        - isQualified
+        - qualificationReason
       properties:
         id:
           type: string
@@ -160,6 +172,25 @@ components:
           type: number
         marketProbability:
           type: number
+        yesProbability:
+          type: number
+          description: Conservative model probability that the contract resolves YES.
+        noProbability:
+          type: number
+          description: Conservative model probability that the contract resolves NO; complements yesProbability to 100.
+        rawYesProbability:
+          type: number
+          description: Calibrated YES probability before the conservative uncertainty adjustment.
+        rawNoProbability:
+          type: number
+        marketYesProbability:
+          type: number
+          description: YES probability implied by the current Kalshi midpoint quote.
+        marketNoProbability:
+          type: number
+        uncertaintyMargin:
+          type: number
+          description: Percentage-point safety adjustment based on holdout calibration error, finite evaluation size, and current spread.
         edge:
           type: number
         confidence:
@@ -189,6 +220,25 @@ components:
           type: string
         updatedAt:
           type: string
+        secondsToClose:
+          type: integer
+        latestCandleAgeSeconds:
+          type: integer
+        dataQualityOk:
+          type: boolean
+        isQualified:
+          type: boolean
+          description: Whether the signal has current candles and falls inside the model's validated timing window.
+        qualificationReason:
+          type: string
+          enum:
+            [
+              ready,
+              outside_window,
+              insufficient_history,
+              stale_candles,
+              wide_spread,
+            ]
     KalshiPricePoint:
       type: object
       required:
@@ -329,6 +379,9 @@ components:
         - asOf
         - source
         - isLive
+        - dataFreshness
+        - dataAgeSeconds
+        - hasUsablePredictions
         - totalMarkets
         - activeSignals
         - averageConfidence
@@ -362,6 +415,13 @@ components:
         source:
           type: string
         isLive:
+          type: boolean
+        dataFreshness:
+          type: string
+          enum: [live, delayed, stale]
+        dataAgeSeconds:
+          type: integer
+        hasUsablePredictions:
           type: boolean
         totalMarkets:
           type: integer
