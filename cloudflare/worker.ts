@@ -38,7 +38,8 @@ const MAX_PREDICTION_SECONDS = 7 * 60;
 const MAX_CANDLE_AGE_SECONDS = 3 * 60;
 const MIN_CANDLE_COUNT = 3;
 const MAX_SUPPORTED_SPREAD = 0.1;
-const KALSHI_SERIES_PAUSE_MS = 1_250;
+const MARKET_INTERVAL_MS = 15 * 60 * 1_000;
+const MARKET_TIME_ZONE = "America/New_York";
 const PUBLISHED_SNAPSHOT_URL =
   "https://raw.githubusercontent.com/Ronaldo76625/15-minute-market-intelligence/live-data/live-data.json";
 const bundledModel = modelSnapshot as ValidatedKalshiModel;
@@ -163,6 +164,30 @@ function seriesFor(market: KalshiApiMarket): (typeof LIVE_SERIES)[number] {
 
 function assetFor(market: KalshiApiMarket): string {
   return ASSET_BY_SERIES[seriesFor(market)];
+}
+
+function marketTickerSuffix(closeTimestamp: number): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: MARKET_TIME_ZONE,
+    year: "2-digit",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(closeTimestamp));
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+  const minute = part("minute");
+  return `${part("year")}${part("month").toUpperCase()}${part("day")}${part("hour")}${minute}-${minute}`;
+}
+
+function marketTickersForClose(
+  closeTimestamp: number,
+  seriesTickers: readonly LiveSeries[],
+): string[] {
+  const suffix = marketTickerSuffix(closeTimestamp);
+  return seriesTickers.map((seriesTicker) => `${seriesTicker}-${suffix}`);
 }
 
 function toDashboardMarket(market: KalshiApiMarket) {
@@ -430,19 +455,18 @@ async function kalshiFetch<T>(apiPath: string): Promise<T> {
 async function fetchActiveMarkets(
   seriesTickers: readonly LiveSeries[] = LIVE_SERIES,
 ): Promise<KalshiApiMarket[]> {
-  const markets: KalshiApiMarket[] = [];
-  for (const seriesTicker of seriesTickers) {
-    const response = await kalshiFetch<{ markets: KalshiApiMarket[] }>(
-      `/markets?status=open&limit=10&series_ticker=${seriesTicker}`,
-    );
-    markets.push(...response.markets);
-    await new Promise((resolve) => setTimeout(resolve, KALSHI_SERIES_PAUSE_MS));
-  }
   const now = Date.now();
-  return markets.filter(
+  const currentClose =
+    (Math.floor(now / MARKET_INTERVAL_MS) + 1) * MARKET_INTERVAL_MS;
+  const tickers = marketTickersForClose(currentClose, seriesTickers);
+  const response = await kalshiFetch<{ markets: KalshiApiMarket[] }>(
+    `/markets?limit=${tickers.length}&tickers=${encodeURIComponent(tickers.join(","))}`,
+  );
+  return response.markets.filter(
     (market) =>
       Number.isFinite(Date.parse(market.close_time)) &&
-      Date.parse(market.close_time) > now,
+      Date.parse(market.close_time) > now &&
+      Date.parse(market.open_time) <= now,
   );
 }
 
@@ -648,19 +672,21 @@ export async function generateLiveMarketSnapshot(
 export async function fetchRecentSettlements(
   seriesTickers: readonly LiveSeries[] = LIVE_SERIES,
 ): Promise<KalshiSettlement[]> {
-  const settlements: KalshiSettlement[] = [];
-  for (const seriesTicker of seriesTickers) {
-    const response = await kalshiFetch<{ markets: KalshiApiMarket[] }>(
-      `/markets?status=settled&limit=20&series_ticker=${seriesTicker}`,
-    );
-    response.markets.forEach((market) => {
-      if (market.result === "yes" || market.result === "no") {
-        settlements.push({ ticker: market.ticker, result: market.result });
-      }
-    });
-    await new Promise((resolve) => setTimeout(resolve, KALSHI_SERIES_PAUSE_MS));
-  }
-  return settlements;
+  const latestClosed = Math.floor(Date.now() / MARKET_INTERVAL_MS) * MARKET_INTERVAL_MS;
+  const tickers = Array.from({ length: 8 }, (_, index) =>
+    marketTickersForClose(
+      latestClosed - index * MARKET_INTERVAL_MS,
+      seriesTickers,
+    ),
+  ).flat();
+  const response = await kalshiFetch<{ markets: KalshiApiMarket[] }>(
+    `/markets?limit=${tickers.length}&tickers=${encodeURIComponent(tickers.join(","))}`,
+  );
+  return response.markets.flatMap((market) =>
+    market.result === "yes" || market.result === "no"
+      ? [{ ticker: market.ticker, result: market.result }]
+      : [],
+  );
 }
 
 async function readStoredSnapshot(
@@ -1065,9 +1091,7 @@ export default {
 
     return env.ASSETS.fetch(request);
   },
-  async scheduled(controller, env, ctx): Promise<void> {
-    const minute = Math.floor(controller.scheduledTime / 60_000);
-    const seriesTicker = LIVE_SERIES[minute % LIVE_SERIES.length];
-    ctx.waitUntil(refreshLiveSnapshot(env, [seriesTicker], false));
+  async scheduled(_controller, env, ctx): Promise<void> {
+    ctx.waitUntil(refreshLiveSnapshot(env, LIVE_SERIES, false));
   },
 } satisfies ExportedHandler<Env>;
