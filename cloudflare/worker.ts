@@ -6,7 +6,10 @@ import {
   type ValidatedKalshiModel,
 } from "../artifacts/api-server/src/services/kalshi-model";
 
-const KALSHI_API_BASE_URL = "https://external-api.kalshi.com/trade-api/v2";
+const KALSHI_API_BASE_URLS = [
+  "https://external-api.kalshi.com/trade-api/v2",
+  "https://api.elections.kalshi.com/trade-api/v2",
+] as const;
 const LIVE_SERIES = [
   "KXBTC15M",
   "KXETH15M",
@@ -34,6 +37,7 @@ const MAX_PREDICTION_SECONDS = 7 * 60;
 const MAX_CANDLE_AGE_SECONDS = 3 * 60;
 const MIN_CANDLE_COUNT = 3;
 const MAX_SUPPORTED_SPREAD = 0.1;
+const KALSHI_SERIES_PAUSE_MS = 1_250;
 const PUBLISHED_SNAPSHOT_URL =
   "https://raw.githubusercontent.com/Ronaldo76625/15-minute-market-intelligence/live-data/live-data.json";
 const bundledModel = modelSnapshot as ValidatedKalshiModel;
@@ -389,30 +393,32 @@ function buildSignal(
 async function kalshiFetch<T>(apiPath: string): Promise<T> {
   let lastStatus: number | undefined;
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const response = await fetch(`${KALSHI_API_BASE_URL}${apiPath}`, {
-      headers: {
-        Accept: "application/json",
-        "User-Agent":
-          "kalshi-15-minute-predictor/1.0 (+https://github.com/Ronaldo76625/15-minute-market-intelligence)",
-      },
-      cf: {
-        cacheEverything: true,
-        cacheTtl: 15,
-      },
-      signal: AbortSignal.timeout(8_000),
-    });
-    lastStatus = response.status;
-    if (response.ok) return (await response.json()) as T;
-
-    const shouldRetry = response.status === 429 || response.status >= 500;
-    if (!shouldRetry || attempt === 2) break;
-    const retryAfterSeconds = Number(response.headers.get("retry-after"));
-    const waitMs =
-      Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
-        ? retryAfterSeconds * 1_000
-        : 750 * (attempt + 1);
-    await new Promise((resolve) => setTimeout(resolve, waitMs));
+  for (const baseUrl of KALSHI_API_BASE_URLS) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await fetch(`${baseUrl}${apiPath}`, {
+        headers: {
+          Accept: "application/json",
+          "User-Agent":
+            "kalshi-15-minute-predictor/1.0 (+https://github.com/Ronaldo76625/15-minute-market-intelligence)",
+        },
+        cf: {
+          cacheEverything: true,
+          cacheTtl: 15,
+        },
+        signal: AbortSignal.timeout(8_000),
+      });
+      lastStatus = response.status;
+      if (response.ok) return (await response.json()) as T;
+      if (response.status === 429) break;
+      const shouldRetry = response.status >= 500;
+      if (!shouldRetry || attempt === 1) break;
+      const retryAfterSeconds = Number(response.headers.get("retry-after"));
+      const waitMs =
+        Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+          ? retryAfterSeconds * 1_000
+          : 750 * (attempt + 1);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
   }
 
   throw new Error(
@@ -427,7 +433,7 @@ async function fetchActiveMarkets(): Promise<KalshiApiMarket[]> {
       `/markets?status=open&limit=10&series_ticker=${seriesTicker}`,
     );
     markets.push(...response.markets);
-    await new Promise((resolve) => setTimeout(resolve, 175));
+    await new Promise((resolve) => setTimeout(resolve, KALSHI_SERIES_PAUSE_MS));
   }
   const now = Date.now();
   return markets.filter(
@@ -646,7 +652,7 @@ export async function fetchRecentSettlements(): Promise<KalshiSettlement[]> {
         settlements.push({ ticker: market.ticker, result: market.result });
       }
     });
-    await new Promise((resolve) => setTimeout(resolve, 175));
+    await new Promise((resolve) => setTimeout(resolve, KALSHI_SERIES_PAUSE_MS));
   }
   return settlements;
 }
