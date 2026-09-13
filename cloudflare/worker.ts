@@ -399,18 +399,18 @@ async function kalshiFetch<T>(apiPath: string): Promise<T> {
       const response = await fetch(`${baseUrl}${apiPath}`, {
         headers: {
           Accept: "application/json",
-          "User-Agent":
-            "kalshi-15-minute-predictor/1.0 (+https://github.com/Ronaldo76625/15-minute-market-intelligence)",
-        },
-        cf: {
-          cacheEverything: true,
-          cacheTtl: 15,
         },
         signal: AbortSignal.timeout(8_000),
       });
       lastStatus = response.status;
       if (response.ok) return (await response.json()) as T;
-      if (response.status === 429) break;
+      if (response.status === 429) {
+        console.warn("Kalshi rate limit", {
+          host: new URL(baseUrl).host,
+          retryAfter: response.headers.get("retry-after") ?? "not-provided",
+        });
+        break;
+      }
       const shouldRetry = response.status >= 500;
       if (!shouldRetry || attempt === 1) break;
       const retryAfterSeconds = Number(response.headers.get("retry-after"));
@@ -796,6 +796,7 @@ function mergeSnapshots(
 async function refreshLiveSnapshot(
   env: Env,
   seriesTickers: readonly LiveSeries[] = LIVE_SERIES,
+  includeSettlements = true,
 ): Promise<void> {
   const incoming = await generateLiveMarketSnapshot(
     bundledModel,
@@ -809,10 +810,12 @@ async function refreshLiveSnapshot(
   }
   const snapshot = mergeSnapshots(previous, incoming, seriesTickers);
   let settlements: KalshiSettlement[] = [];
-  try {
-    settlements = await fetchRecentSettlements(seriesTickers);
-  } catch (error) {
-    console.warn("Unable to refresh recent settlements", error);
+  if (includeSettlements) {
+    try {
+      settlements = await fetchRecentSettlements(seriesTickers);
+    } catch (error) {
+      console.warn("Unable to refresh recent settlements", error);
+    }
   }
   await writeStoredSnapshot(env, snapshot);
   const current = removeExpiredMarkets(snapshot);
@@ -855,7 +858,7 @@ async function getLiveSnapshot(
       console.warn("Unable to load a fresh published Kalshi snapshot", error);
     }
   }
-  if (!isUsableFreshSnapshot(stored)) {
+  if (!stored) {
     try {
       const live = await generateLiveMarketSnapshot();
       stored = live;
@@ -1065,6 +1068,6 @@ export default {
   async scheduled(controller, env, ctx): Promise<void> {
     const minute = Math.floor(controller.scheduledTime / 60_000);
     const seriesTicker = LIVE_SERIES[minute % LIVE_SERIES.length];
-    ctx.waitUntil(refreshLiveSnapshot(env, [seriesTicker]));
+    ctx.waitUntil(refreshLiveSnapshot(env, [seriesTicker], false));
   },
 } satisfies ExportedHandler<Env>;
