@@ -977,6 +977,28 @@ async function getLiveSnapshot(
   return snapshot;
 }
 
+async function syncPublishedSnapshot(env: Env): Promise<void> {
+  const published = await fetchPublishedSnapshot();
+  if (!isUsableFreshSnapshot(published.snapshot)) return;
+
+  const stored = await readStoredSnapshot(env);
+  if (
+    stored &&
+    Date.parse(stored.asOf) >= Date.parse(published.snapshot.asOf)
+  ) {
+    return;
+  }
+
+  await writeStoredSnapshot(env, published.snapshot);
+  const current = removeExpiredMarkets(published.snapshot);
+  await updatePaperSignalLedger(
+    env,
+    current.signals,
+    published.settlements,
+    published.snapshot.model.name,
+  );
+}
+
 function isStoredSnapshot(
   value: unknown,
   allowStale = false,
@@ -1150,6 +1172,6 @@ export default {
     return env.ASSETS.fetch(request);
   },
   async scheduled(_controller, env, ctx): Promise<void> {
-    ctx.waitUntil(refreshLiveSnapshot(env, LIVE_SERIES, false));
+    ctx.waitUntil(syncPublishedSnapshot(env));
   },
 } satisfies ExportedHandler<Env>;
