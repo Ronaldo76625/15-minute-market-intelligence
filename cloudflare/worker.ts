@@ -672,7 +672,8 @@ export async function generateLiveMarketSnapshot(
 export async function fetchRecentSettlements(
   seriesTickers: readonly LiveSeries[] = LIVE_SERIES,
 ): Promise<KalshiSettlement[]> {
-  const latestClosed = Math.floor(Date.now() / MARKET_INTERVAL_MS) * MARKET_INTERVAL_MS;
+  const latestClosed =
+    Math.floor(Date.now() / MARKET_INTERVAL_MS) * MARKET_INTERVAL_MS;
   const tickers = Array.from({ length: 8 }, (_, index) =>
     marketTickersForClose(
       latestClosed - index * MARKET_INTERVAL_MS,
