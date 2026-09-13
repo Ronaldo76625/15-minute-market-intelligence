@@ -447,6 +447,42 @@ async function kalshiFetch<T>(apiPath: string): Promise<T> {
     }
   }
 
+  // Kalshi can throttle shared Cloudflare egress IPs even at a low request
+  // volume. Reader is used only as a public, read-only transport fallback;
+  // the requested resource remains the official Kalshi REST endpoint.
+  try {
+    const targetUrl = `${KALSHI_API_BASE_URLS[0]}${apiPath}`;
+    const response = await fetch(`https://r.jina.ai/${targetUrl}`, {
+      headers: {
+        Accept: "application/json",
+        "X-Engine": "direct",
+        "X-No-Cache": "true",
+        "X-Return-Format": "text",
+      },
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (response.ok) {
+      const reader = (await response.json()) as {
+        data?: {
+          url?: string;
+          text?: string;
+          httpStatus?: number;
+        };
+      };
+      if (
+        reader.data?.httpStatus === 200 &&
+        reader.data.url?.startsWith(KALSHI_API_BASE_URLS[0]) &&
+        typeof reader.data.text === "string"
+      ) {
+        console.warn("Using the public Kalshi read-through fallback");
+        return JSON.parse(reader.data.text) as T;
+      }
+    }
+    lastStatus = response.status;
+  } catch (error) {
+    console.warn("Kalshi read-through fallback failed", error);
+  }
+
   throw new Error(
     `Kalshi API returned ${lastStatus ?? "an error"} for ${apiPath.slice(0, 160)}`,
   );
@@ -1009,7 +1045,7 @@ function dashboardResponse(snapshot: LiveSnapshot, url: URL) {
 
   return {
     asOf: snapshot.asOf,
-    source: `Kalshi public REST API · Cloudflare scheduled refresh · ${activeModel.name}`,
+    source: `Kalshi public REST API · Cloudflare scheduled refresh with read-through fallback · ${activeModel.name}`,
     isLive: snapshot.dataFreshness === "live" && markets.length > 0,
     dataFreshness: snapshot.dataFreshness,
     dataAgeSeconds: snapshot.dataAgeSeconds,
