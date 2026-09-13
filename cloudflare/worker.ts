@@ -19,6 +19,7 @@ const LIVE_SERIES = [
   "KXBNB15M",
   "KXHYPE15M",
 ] as const;
+type LiveSeries = (typeof LIVE_SERIES)[number];
 const ASSET_BY_SERIES: Record<(typeof LIVE_SERIES)[number], string> = {
   KXBTC15M: "BTC",
   KXETH15M: "ETH",
@@ -426,9 +427,11 @@ async function kalshiFetch<T>(apiPath: string): Promise<T> {
   );
 }
 
-async function fetchActiveMarkets(): Promise<KalshiApiMarket[]> {
+async function fetchActiveMarkets(
+  seriesTickers: readonly LiveSeries[] = LIVE_SERIES,
+): Promise<KalshiApiMarket[]> {
   const markets: KalshiApiMarket[] = [];
-  for (const seriesTicker of LIVE_SERIES) {
+  for (const seriesTicker of seriesTickers) {
     const response = await kalshiFetch<{ markets: KalshiApiMarket[] }>(
       `/markets?status=open&limit=10&series_ticker=${seriesTicker}`,
     );
@@ -595,8 +598,9 @@ async function updatePaperSignalLedger(
 
 export async function generateLiveMarketSnapshot(
   selectedModel: ValidatedKalshiModel = bundledModel,
+  seriesTickers: readonly LiveSeries[] = LIVE_SERIES,
 ): Promise<StoredSnapshot> {
-  const apiMarkets = await fetchActiveMarkets();
+  const apiMarkets = await fetchActiveMarkets(seriesTickers);
   let candlesByTicker = new Map<string, KalshiApiCandle[]>();
   try {
     candlesByTicker = await fetchCandlesForMarkets(apiMarkets);
@@ -641,9 +645,11 @@ export async function generateLiveMarketSnapshot(
   };
 }
 
-export async function fetchRecentSettlements(): Promise<KalshiSettlement[]> {
+export async function fetchRecentSettlements(
+  seriesTickers: readonly LiveSeries[] = LIVE_SERIES,
+): Promise<KalshiSettlement[]> {
   const settlements: KalshiSettlement[] = [];
-  for (const seriesTicker of LIVE_SERIES) {
+  for (const seriesTicker of seriesTickers) {
     const response = await kalshiFetch<{ markets: KalshiApiMarket[] }>(
       `/markets?status=settled&limit=20&series_ticker=${seriesTicker}`,
     );
@@ -757,11 +763,54 @@ async function fetchPublishedSnapshot(): Promise<{
   return { snapshot: published.snapshot, settlements };
 }
 
-async function refreshLiveSnapshot(env: Env): Promise<void> {
-  const snapshot = await generateLiveMarketSnapshot();
+function mergeSnapshots(
+  previous: StoredSnapshot | undefined,
+  incoming: StoredSnapshot,
+  refreshedSeries: readonly LiveSeries[],
+): StoredSnapshot {
+  if (!previous) return incoming;
+  const refreshedAssets = new Set(
+    refreshedSeries.map((seriesTicker) => ASSET_BY_SERIES[seriesTicker]),
+  );
+  const currentPrevious = removeExpiredMarkets(previous);
+  return {
+    ...incoming,
+    markets: [
+      ...currentPrevious.markets.filter(
+        (market) => !refreshedAssets.has(market.asset),
+      ),
+      ...incoming.markets,
+    ],
+    signals: [
+      ...currentPrevious.signals.filter(
+        (signal) => !refreshedAssets.has(signal.asset),
+      ),
+      ...incoming.signals,
+    ],
+    priceHistory: refreshedAssets.has("BTC")
+      ? incoming.priceHistory
+      : currentPrevious.priceHistory,
+  };
+}
+
+async function refreshLiveSnapshot(
+  env: Env,
+  seriesTickers: readonly LiveSeries[] = LIVE_SERIES,
+): Promise<void> {
+  const incoming = await generateLiveMarketSnapshot(
+    bundledModel,
+    seriesTickers,
+  );
+  let previous: StoredSnapshot | undefined;
+  try {
+    previous = await readStoredSnapshot(env);
+  } catch (error) {
+    console.warn("Unable to merge the previous snapshot", error);
+  }
+  const snapshot = mergeSnapshots(previous, incoming, seriesTickers);
   let settlements: KalshiSettlement[] = [];
   try {
-    settlements = await fetchRecentSettlements();
+    settlements = await fetchRecentSettlements(seriesTickers);
   } catch (error) {
     console.warn("Unable to refresh recent settlements", error);
   }
@@ -1013,7 +1062,9 @@ export default {
 
     return env.ASSETS.fetch(request);
   },
-  async scheduled(_controller, env, ctx): Promise<void> {
-    ctx.waitUntil(refreshLiveSnapshot(env));
+  async scheduled(controller, env, ctx): Promise<void> {
+    const minute = Math.floor(controller.scheduledTime / 60_000);
+    const seriesTicker = LIVE_SERIES[minute % LIVE_SERIES.length];
+    ctx.waitUntil(refreshLiveSnapshot(env, [seriesTicker]));
   },
 } satisfies ExportedHandler<Env>;
