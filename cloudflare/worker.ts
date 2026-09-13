@@ -447,6 +447,27 @@ async function kalshiFetch<T>(apiPath: string): Promise<T> {
     }
   }
 
+  // A translated-origin read-through uses a different public egress route
+  // when Kalshi throttles Cloudflare's shared addresses. Source and target are
+  // both English so the response body remains the official JSON unchanged.
+  try {
+    const separator = apiPath.includes("?") ? "&" : "?";
+    const translatedUrl =
+      `https://external--api-kalshi-com.translate.goog/trade-api/v2${apiPath}` +
+      `${separator}_x_tr_sl=en&_x_tr_tl=en&_x_tr_hl=en`;
+    const response = await fetch(translatedUrl, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(8_000),
+    });
+    lastStatus = response.status;
+    if (response.ok) {
+      console.warn("Using the public Kalshi translated-origin fallback");
+      return (await response.json()) as T;
+    }
+  } catch (error) {
+    console.warn("Kalshi translated-origin fallback failed", error);
+  }
+
   // Kalshi can throttle shared Cloudflare egress IPs even at a low request
   // volume. Reader is used only as a public, read-only transport fallback;
   // the requested resource remains the official Kalshi REST endpoint.
