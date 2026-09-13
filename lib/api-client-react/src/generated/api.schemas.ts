@@ -98,9 +98,19 @@ export interface KalshiSignal {
   secondsToClose: number;
   latestCandleAgeSeconds: number;
   dataQualityOk: boolean;
-  /** Whether the signal has current candles and falls inside the model's validated timing window. */
+  /** Whether the signal has current candles and acceptable market data quality. */
   isQualified: boolean;
   qualificationReason: KalshiSignalQualificationReason;
+  /** Closest independently calibrated validation horizon selected for the current time to close. */
+  horizonMinutes: number;
+  /** Qualified accuracy for this horizon in the untouched chronological evaluation. */
+  horizonHitRate: number;
+  /** Conservative 95 percent Wilson lower confidence bound for this horizon's qualified hit rate. */
+  horizonHitRateLowerBound: number;
+  /** Number of qualified signals evaluated for this horizon. */
+  horizonSampleSize: number;
+  /** Validation-selected probability threshold for this horizon. */
+  horizonConfidenceThreshold: number;
 }
 
 export interface KalshiPricePoint {
@@ -190,6 +200,8 @@ export interface KalshiDashboard {
   dataFreshness: KalshiDashboardDataFreshness;
   dataAgeSeconds: number;
   hasUsablePredictions: boolean;
+  /** Whether current probabilities are shown below the requested minimum to avoid an empty information state. */
+  filterFallbackActive: boolean;
   totalMarkets: number;
   activeSignals: number;
   averageConfidence: number;

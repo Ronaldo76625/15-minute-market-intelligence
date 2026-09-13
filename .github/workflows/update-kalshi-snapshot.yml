@@ -32,10 +32,13 @@ jobs:
       - run: pnpm install --frozen-lockfile --filter @workspace/scripts...
       - name: Load latest validated model
         run: |
-          if ! curl --fail --silent --show-error --location \
+          cp cloudflare/model-snapshot.json /tmp/kalshi-model.json
+          if curl --fail --silent --show-error --location \
             https://raw.githubusercontent.com/Ronaldo76625/15-minute-market-intelligence/live-data/model-snapshot.json \
-            --output /tmp/kalshi-model.json; then
-            cp cloudflare/model-snapshot.json /tmp/kalshi-model.json
+            --output /tmp/published-model.json && \
+            jq --exit-status '.horizons | type == "array" and length >= 8' \
+              /tmp/published-model.json >/dev/null; then
+            cp /tmp/published-model.json /tmp/kalshi-model.json
           fi
       - run: pnpm run live:generate
         env:

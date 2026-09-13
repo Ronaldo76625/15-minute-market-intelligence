@@ -13,7 +13,25 @@ const outputPath = path.resolve(import.meta.dirname, "model-snapshot.json");
 function assertPromotionQuality(
   model: Awaited<ReturnType<typeof trainAndValidate>>,
 ): void {
+  const horizonFailures = model.horizons.flatMap((horizon) => {
+    const label = `${horizon.targetSeconds / 60}-minute horizon`;
+    return [
+      horizon.evaluationMarkets < 500
+        ? `${label} has fewer than 500 untouched evaluation markets`
+        : "",
+      horizon.holdoutMarkets < 40
+        ? `${label} has fewer than 40 qualified evaluation signals`
+        : "",
+      horizon.brierScore > 0.3 ? `${label} Brier score is above 0.30` : "",
+      horizon.expectedCalibrationError > 10
+        ? `${label} calibration gap is above 10 percentage points`
+        : "",
+    ].filter(Boolean);
+  });
   const failures = [
+    model.horizons.length < 8
+      ? "fewer than 8 independently validated horizons"
+      : "",
     model.evaluationMarkets < 500
       ? "fewer than 500 untouched evaluation markets"
       : "",
@@ -29,6 +47,7 @@ function assertPromotionQuality(
     model.expectedCalibrationError > 8
       ? "calibration gap above 8 percentage points"
       : "",
+    ...horizonFailures,
   ].filter(Boolean);
   if (failures.length > 0) {
     throw new Error(`Model failed promotion gates: ${failures.join(", ")}`);

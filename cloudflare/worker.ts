@@ -33,10 +33,8 @@ const KALSHI_TAKER_FEE_RATE = 0.07;
 const SNAPSHOT_CACHE_SECONDS = 30;
 const FRESH_SNAPSHOT_MS = 7 * 60 * 1_000;
 const DELAYED_SNAPSHOT_MS = 15 * 60 * 1_000;
-const MIN_PREDICTION_SECONDS = 3 * 60;
-const MAX_PREDICTION_SECONDS = 7 * 60;
-const MAX_CANDLE_AGE_SECONDS = 3 * 60;
-const MIN_CANDLE_COUNT = 3;
+const MAX_CANDLE_AGE_SECONDS = 6 * 60;
+const MIN_CANDLE_COUNT = 1;
 const MAX_SUPPORTED_SPREAD = 0.1;
 const MARKET_INTERVAL_MS = 15 * 60 * 1_000;
 const MARKET_TIME_ZONE = "America/New_York";
@@ -228,9 +226,6 @@ function refreshSignalTimers(
       Math.floor((Date.parse(closeTime) - Date.now()) / 1_000),
     );
     if (secondsToClose <= 0) return [];
-    const insideValidatedWindow =
-      secondsToClose >= MIN_PREDICTION_SECONDS &&
-      secondsToClose <= MAX_PREDICTION_SECONDS;
     const latestCandleAgeSeconds = Math.floor(
       (Date.now() - Date.parse(signal.updatedAt)) / 1_000,
     );
@@ -239,7 +234,7 @@ function refreshSignalTimers(
       latestCandleAgeSeconds >= -60 &&
       latestCandleAgeSeconds <= MAX_CANDLE_AGE_SECONDS;
     const dataQualityOk = signal.dataQualityOk && candlesAreRecent;
-    const isQualified = dataQualityOk && insideValidatedWindow;
+    const isQualified = dataQualityOk;
     return [
       {
         ...signal,
@@ -252,9 +247,7 @@ function refreshSignalTimers(
           ? "stale_candles"
           : !signal.dataQualityOk
             ? signal.qualificationReason
-            : insideValidatedWindow
-              ? "ready"
-              : "outside_window",
+            : "ready",
         recommendation: isQualified ? signal.recommendation : "wait",
         status: isQualified ? signal.status : "watch",
       },
@@ -272,9 +265,10 @@ function buildSignal(
     Math.floor((Date.parse(market.close_time) - Date.now()) / 1_000),
   );
   const prediction = predictLiveMarket(market, candles, selectedModel);
+  const horizon = prediction.horizon;
   const rawYesProbability = prediction.yesProbability;
   const calibrationPenalty = clamp(
-    selectedModel.expectedCalibrationError / 100,
+    horizon.expectedCalibrationError / 100,
     0.005,
     0.15,
   );
@@ -282,7 +276,7 @@ function buildSignal(
     1.96 *
       Math.sqrt(
         (rawYesProbability * (1 - rawYesProbability)) /
-          Math.max(30, selectedModel.evaluationMarkets),
+          Math.max(30, horizon.evaluationMarkets),
       ),
     0,
     0.08,
@@ -325,7 +319,7 @@ function buildSignal(
         100
       : 0;
   const asset = assetFor(market);
-  const assetHistory = selectedModel.assetStats.find(
+  const assetHistory = horizon.assetStats.find(
     (stats) => stats.asset === asset,
   );
   const latestCandleTimestamp = candles.at(-1)?.end_period_ts;
@@ -337,9 +331,6 @@ function buildSignal(
     latestCandleAgeSeconds >= -60 &&
     latestCandleAgeSeconds <= MAX_CANDLE_AGE_SECONDS;
   const spreadIsSupported = prediction.spread <= MAX_SUPPORTED_SPREAD;
-  const insideValidatedWindow =
-    secondsToClose >= MIN_PREDICTION_SECONDS &&
-    secondsToClose <= MAX_PREDICTION_SECONDS;
   const dataQualityOk =
     hasEnoughCandles && candlesAreRecent && spreadIsSupported;
   const qualificationReason = !hasEnoughCandles
@@ -348,15 +339,10 @@ function buildSignal(
       ? ("stale_candles" as const)
       : !spreadIsSupported
         ? ("wide_spread" as const)
-        : !insideValidatedWindow
-          ? ("outside_window" as const)
-          : ("ready" as const);
-  const isQualified = dataQualityOk && insideValidatedWindow;
-  const qualifiedConfidence =
-    confidence >= (selectedModel.confidenceThreshold ?? 60);
-  const validationApproved = (selectedModel.reliableAssets ?? []).includes(
-    asset,
-  );
+        : ("ready" as const);
+  const isQualified = dataQualityOk;
+  const qualifiedConfidence = confidence >= (horizon.confidenceThreshold ?? 60);
+  const validationApproved = (horizon.reliableAssets ?? []).includes(asset);
   const recommendation =
     isQualified &&
     validationApproved &&
@@ -402,7 +388,7 @@ function buildSignal(
     netExpectedValue: rounded(netExpectedValue),
     recommendation,
     score: rounded(confidence + clamp(netExpectedValue, -20, 20)),
-    explanation: `${selectedModel.name} estimates ${(rawYesProbability * 100).toFixed(1)}% YES before a conservative ${(uncertaintyMargin * 100).toFixed(1)} point uncertainty adjustment. The displayed YES/NO probabilities use that safer estimate. ${asset} returned an estimated ${assetHistory?.netReturn.toFixed(1) ?? "0.0"}% after fees in its unseen-market test; spread is ${(prediction.spread * 100).toFixed(1)}¢.`,
+    explanation: `${selectedModel.name} selected the independently calibrated ${horizon.targetSeconds / 60}-minute horizon and estimates ${(rawYesProbability * 100).toFixed(1)}% YES before a conservative ${(uncertaintyMargin * 100).toFixed(1)} point uncertainty adjustment. That horizon scored ${horizon.hitRate.toFixed(1)}% across ${horizon.holdoutMarkets} qualified unseen signals. ${asset} returned an estimated ${assetHistory?.netReturn.toFixed(1) ?? "0.0"}% after fees at this horizon; spread is ${(prediction.spread * 100).toFixed(1)}¢.`,
     updatedAt: new Date(
       (candles.at(-1)?.end_period_ts ?? Math.floor(Date.now() / 1_000)) * 1_000,
     ).toISOString(),
@@ -413,6 +399,11 @@ function buildSignal(
     dataQualityOk,
     isQualified,
     qualificationReason,
+    horizonMinutes: rounded(horizon.targetSeconds / 60),
+    horizonHitRate: horizon.hitRate,
+    horizonHitRateLowerBound: horizon.hitRateLowerBound,
+    horizonSampleSize: horizon.holdoutMarkets,
+    horizonConfidenceThreshold: horizon.confidenceThreshold,
   };
 }
 
@@ -618,8 +609,8 @@ async function updatePaperSignalLedger(
   const eligible = signals.filter(
     (signal) =>
       signal.isQualified &&
-      signal.secondsToClose >= 240 &&
-      signal.secondsToClose <= 420,
+      signal.secondsToClose >= 30 &&
+      signal.secondsToClose <= 900,
   );
 
   if (eligible.length > 0) {
@@ -1046,7 +1037,21 @@ function isValidatedModel(value: unknown): value is ValidatedKalshiModel {
     candidate.weights.length === candidate.means.length + 1 &&
     candidate.means.length === candidate.standardDeviations.length &&
     Array.isArray(candidate.assetStats) &&
-    Array.isArray(candidate.reliableAssets)
+    Array.isArray(candidate.reliableAssets) &&
+    Array.isArray(candidate.horizons) &&
+    candidate.horizons.length >= 4 &&
+    candidate.horizons.every(
+      (horizon) =>
+        Number.isFinite(horizon.targetSeconds) &&
+        Number.isFinite(horizon.evaluationMarkets) &&
+        Number.isFinite(horizon.holdoutMarkets) &&
+        Number.isFinite(horizon.hitRate) &&
+        Number.isFinite(horizon.hitRateLowerBound) &&
+        Number.isFinite(horizon.expectedCalibrationError) &&
+        Number.isFinite(horizon.confidenceThreshold) &&
+        Array.isArray(horizon.reliableAssets) &&
+        Array.isArray(horizon.assetStats),
+    )
   );
 }
 
@@ -1070,11 +1075,22 @@ function dashboardResponse(snapshot: LiveSnapshot, url: URL) {
   const limit = Math.floor(
     clamp(Number.isFinite(parsedLimit) ? parsedLimit : 8, 1, 50),
   );
-  const signals = snapshot.signals
+  const rankedSignals = snapshot.signals
     .filter((signal) => !category || signal.category === category)
-    .filter((signal) => signal.confidence >= minConfidence)
-    .sort((left, right) => right.score - left.score)
-    .slice(0, limit);
+    .sort((left, right) => right.score - left.score);
+  const filteredSignals = rankedSignals.filter(
+    (signal) => signal.confidence >= minConfidence,
+  );
+  const filterFallbackActive =
+    filteredSignals.length === 0 && rankedSignals.length > 0;
+  const signals = (
+    filterFallbackActive ? rankedSignals : filteredSignals
+  ).slice(0, limit);
+  const horizonMinutes = signals[0]?.horizonMinutes;
+  const activeHorizon = activeModel.horizons.find(
+    (horizon) => horizon.targetSeconds === (horizonMinutes ?? 5) * 60,
+  );
+  const evaluation = activeHorizon ?? activeModel;
   const markets = snapshot.markets.filter(
     (market) => !category || market.category === category,
   );
@@ -1088,33 +1104,34 @@ function dashboardResponse(snapshot: LiveSnapshot, url: URL) {
 
   return {
     asOf: snapshot.asOf,
-    source: `Kalshi public REST API · Cloudflare scheduled refresh with read-through fallback · ${activeModel.name}`,
+    source: `Kalshi public REST API · continuous GitHub refresh synchronized by Cloudflare · ${activeModel.name}`,
     isLive: snapshot.dataFreshness === "live" && markets.length > 0,
     dataFreshness: snapshot.dataFreshness,
     dataAgeSeconds: snapshot.dataAgeSeconds,
     hasUsablePredictions: signals.some((signal) => signal.isQualified),
+    filterFallbackActive,
     totalMarkets: markets.length,
     activeSignals: signals.length,
     averageConfidence,
-    backtestHitRate: activeModel.hitRate,
-    hitRateLowerBound: activeModel.hitRateLowerBound,
-    simulatedReturn: activeModel.grossPaperReturn,
-    netSimulatedReturn: activeModel.netPaperReturn,
+    backtestHitRate: evaluation.hitRate,
+    hitRateLowerBound: evaluation.hitRateLowerBound,
+    simulatedReturn: evaluation.grossPaperReturn,
+    netSimulatedReturn: evaluation.netPaperReturn,
     modelName: activeModel.name,
     modelTrainedAt: activeModel.trainedAt,
     trainingMarkets: activeModel.trainingMarkets,
     calibrationMarkets: activeModel.calibrationMarkets,
-    evaluationMarkets: activeModel.evaluationMarkets,
-    backtestSampleSize: activeModel.holdoutMarkets,
-    baselineHitRate: activeModel.baselineHitRate,
-    brierScore: activeModel.brierScore,
-    marketBrierScore: activeModel.marketBrierScore,
-    brierSkillScore: activeModel.brierSkillScore,
-    logLoss: activeModel.logLoss,
-    expectedCalibrationError: activeModel.expectedCalibrationError,
-    signalCoverage: activeModel.signalCoverage,
-    confidenceThreshold: activeModel.confidenceThreshold,
-    assetStats: activeModel.assetStats.map((stats) => {
+    evaluationMarkets: evaluation.evaluationMarkets,
+    backtestSampleSize: evaluation.holdoutMarkets,
+    baselineHitRate: evaluation.baselineHitRate,
+    brierScore: evaluation.brierScore,
+    marketBrierScore: evaluation.marketBrierScore,
+    brierSkillScore: evaluation.brierSkillScore,
+    logLoss: evaluation.logLoss,
+    expectedCalibrationError: evaluation.expectedCalibrationError,
+    signalCoverage: evaluation.signalCoverage,
+    confidenceThreshold: evaluation.confidenceThreshold,
+    assetStats: evaluation.assetStats.map((stats) => {
       const current = snapshot.signals.find(
         (signal) => signal.asset === stats.asset,
       );
@@ -1136,7 +1153,7 @@ function dashboardResponse(snapshot: LiveSnapshot, url: URL) {
     liveTracking: snapshot.liveTracking,
     signals,
     priceHistory: snapshot.priceHistory,
-    performance: activeModel.performance,
+    performance: evaluation.performance,
     markets,
   };
 }

@@ -716,6 +716,11 @@ function Home() {
             }
           >
             <div className="divide-y divide-border/70">
+              {!loading && dashboard?.filterFallbackActive ? (
+                <div className="border-b border-primary/20 bg-primary/5 px-5 py-3 text-xs text-primary">
+                  {copy.filterFallback}
+                </div>
+              ) : null}
               {loading ? (
                 Array.from({ length: 4 }).map((_, index) => (
                   <div className="p-5" key={index}>
@@ -801,10 +806,16 @@ function Home() {
                                 : "text-primary"
                             }
                           >
-                            {qualificationLabel(
-                              signal.qualificationReason,
-                              language,
-                            )}
+                            {signal.isQualified
+                              ? copy.horizonEvidence(
+                                  signal.horizonMinutes,
+                                  formatPercent(signal.horizonHitRate),
+                                  signal.horizonSampleSize,
+                                )
+                              : qualificationLabel(
+                                  signal.qualificationReason,
+                                  language,
+                                )}
                           </span>
                           <span className="text-muted-foreground">
                             {copy.safetyAdjustment} · -

@@ -15,7 +15,9 @@ const MODEL_CACHE_TTL_MS = 60 * 60 * 1_000;
 const BASE_FEATURE_COUNT = 17;
 const FEATURE_COUNT = BASE_FEATURE_COUNT + (SERIES.length - 1);
 const KALSHI_TAKER_FEE_RATE = 0.07;
-const TRAINING_OFFSETS_SECONDS = [600, 420, 300, 180, 120] as const;
+export const VALIDATED_HORIZON_SECONDS = [
+  840, 720, 600, 480, 360, 240, 120, 60,
+] as const;
 
 const ASSET_BY_SERIES: Record<(typeof SERIES)[number], string> = {
   KXBTC15M: "BTC",
@@ -107,6 +109,30 @@ export type AssetBacktestStats = {
   profitable: boolean;
 };
 
+export type ValidatedKalshiHorizon = {
+  targetSeconds: number;
+  evaluationMarkets: number;
+  holdoutMarkets: number;
+  hitRate: number;
+  hitRateLowerBound: number;
+  baselineHitRate: number;
+  brierScore: number;
+  marketBrierScore: number;
+  brierSkillScore: number;
+  logLoss: number;
+  expectedCalibrationError: number;
+  signalCoverage: number;
+  confidenceThreshold: number;
+  grossPaperReturn: number;
+  netPaperReturn: number;
+  calibrationIntercept: number;
+  calibrationSlope: number;
+  marketBlendWeight: number;
+  reliableAssets: string[];
+  assetStats: AssetBacktestStats[];
+  performance: ModelPerformancePoint[];
+};
+
 export type ValidatedKalshiModel = {
   name: string;
   trainedAt: string;
@@ -135,12 +161,14 @@ export type ValidatedKalshiModel = {
   calibrationSlope: number;
   marketBlendWeight: number;
   reliableAssets: string[];
+  horizons: ValidatedKalshiHorizon[];
 };
 
 export type LivePrediction = {
   yesProbability: number;
   marketYesProbability: number;
   spread: number;
+  horizon: ValidatedKalshiHorizon;
 };
 
 let modelCache: { expiresAt: number; value: ValidatedKalshiModel } | undefined;
@@ -269,19 +297,11 @@ function featuresAtIndex(
   if (!current) return undefined;
   const currentQuote = quoteAtOrBefore(candles, index);
   const firstQuote = firstQuoteAtOrBefore(candles, index);
-  const oneMinuteQuote = quoteAtOrBefore(candles, index - 1);
-  const threeMinuteQuote = quoteAtOrBefore(candles, index - 3);
-  const fiveMinuteQuote = quoteAtOrBefore(candles, index - 5);
-  const sixMinuteQuote = quoteAtOrBefore(candles, index - 6);
-  if (
-    !currentQuote ||
-    !firstQuote ||
-    !oneMinuteQuote ||
-    !threeMinuteQuote ||
-    !fiveMinuteQuote
-  ) {
-    return undefined;
-  }
+  if (!currentQuote || !firstQuote) return undefined;
+  const oneMinuteQuote = quoteAtOrBefore(candles, index - 1) ?? firstQuote;
+  const threeMinuteQuote = quoteAtOrBefore(candles, index - 3) ?? firstQuote;
+  const fiveMinuteQuote = quoteAtOrBefore(candles, index - 5) ?? firstQuote;
+  const sixMinuteQuote = quoteAtOrBefore(candles, index - 6) ?? firstQuote;
   const openTimestamp = Date.parse(market.open_time) / 1_000;
   const closeTimestamp = Date.parse(market.close_time) / 1_000;
   const duration = Math.max(1, closeTimestamp - openTimestamp);
@@ -354,7 +374,7 @@ function trainingSamplesForMarket(
   const label = market.result === "yes" ? 1 : 0;
   const samples: TrainingSample[] = [];
 
-  for (const offsetSeconds of TRAINING_OFFSETS_SECONDS) {
+  for (const offsetSeconds of VALIDATED_HORIZON_SECONDS) {
     const targetTimestamp = closeTimestamp - offsetSeconds;
     if (targetTimestamp < openTimestamp + 60) continue;
     let selectedIndex = -1;
@@ -373,17 +393,18 @@ function trainingSamplesForMarket(
   return samples;
 }
 
-function fiveMinuteObservation(
+function observationAtHorizon(
   market: KalshiApiMarket,
   candles: KalshiApiCandle[],
+  targetSeconds: number,
 ) {
   const ordered = orderedCandles(candles);
-  const targetTimestamp = Date.parse(market.close_time) / 1_000 - 300;
+  const targetTimestamp = Date.parse(market.close_time) / 1_000 - targetSeconds;
   let selectedIndex = -1;
   for (let index = 0; index < ordered.length; index += 1) {
     if (ordered[index].end_period_ts <= targetTimestamp) selectedIndex = index;
   }
-  if (selectedIndex < 1) return undefined;
+  if (selectedIndex < 0) return undefined;
   const features = featuresAtIndex(market, ordered, selectedIndex);
   if (!features) return undefined;
   return { features, candle: ordered[selectedIndex] };
@@ -580,9 +601,10 @@ function evaluateMarket(
   means: number[],
   standardDeviations: number[],
   calibration: CalibrationParameters,
+  targetSeconds: number,
 ): MarketEvaluation | undefined {
   if (market.result !== "yes" && market.result !== "no") return undefined;
-  const observation = fiveMinuteObservation(market, candles);
+  const observation = observationAtHorizon(market, candles, targetSeconds);
   if (!observation) return undefined;
   const baseProbability = predictWithWeights(
     observation.features,
@@ -630,9 +652,10 @@ function calibrationObservationForMarket(
   weights: number[],
   means: number[],
   standardDeviations: number[],
+  targetSeconds: number,
 ): CalibrationObservation | undefined {
   if (market.result !== "yes" && market.result !== "no") return undefined;
-  const observation = fiveMinuteObservation(market, candles);
+  const observation = observationAtHorizon(market, candles, targetSeconds);
   if (!observation) return undefined;
   const quote = quoteFromCandle(observation.candle);
   if (!Number.isFinite(quote.probability)) return undefined;
@@ -933,48 +956,15 @@ async function fetchCandleHistory(
   return candlesByTicker;
 }
 
-export async function trainAndValidate(
-  fetcher: KalshiFetcher,
-): Promise<ValidatedKalshiModel> {
-  const markets = await fetchSettledMarkets(fetcher);
-  if (markets.length < 1_000) {
-    throw new Error(`Only ${markets.length} settled markets were available`);
-  }
-  const candlesByTicker = await fetchCandleHistory(fetcher, markets);
-  const trainingSplitIndex = Math.floor(markets.length * TRAINING_FRACTION);
-  const calibrationSplitIndex = Math.floor(
-    markets.length * (TRAINING_FRACTION + CALIBRATION_FRACTION),
-  );
-  const trainingCutoffTime = Date.parse(markets[trainingSplitIndex].close_time);
-  const calibrationCutoffTime = Date.parse(
-    markets[calibrationSplitIndex].close_time,
-  );
-  const trainingMarkets = markets.filter(
-    (market) => Date.parse(market.close_time) < trainingCutoffTime,
-  );
-  const calibrationMarkets = markets.filter(
-    (market) =>
-      Date.parse(market.close_time) >= trainingCutoffTime &&
-      Date.parse(market.close_time) < calibrationCutoffTime,
-  );
-  const holdoutMarkets = markets.filter(
-    (market) => Date.parse(market.close_time) >= calibrationCutoffTime,
-  );
-  const trainingSamples = trainingMarkets.flatMap((market) =>
-    trainingSamplesForMarket(market, candlesByTicker.get(market.ticker) ?? []),
-  );
-  if (trainingSamples.length < 2_000) {
-    throw new Error(
-      `Only ${trainingSamples.length} training samples were available`,
-    );
-  }
-
-  const { means, standardDeviations } = featureStatistics(trainingSamples);
-  const weights = trainLogisticRegression(
-    trainingSamples,
-    means,
-    standardDeviations,
-  );
+function validateHorizon(
+  targetSeconds: number,
+  calibrationMarkets: KalshiApiMarket[],
+  holdoutMarkets: KalshiApiMarket[],
+  candlesByTicker: Map<string, KalshiApiCandle[]>,
+  weights: number[],
+  means: number[],
+  standardDeviations: number[],
+): ValidatedKalshiHorizon {
   const calibrationObservations = calibrationMarkets
     .map((market) =>
       calibrationObservationForMarket(
@@ -983,6 +973,7 @@ export async function trainAndValidate(
         weights,
         means,
         standardDeviations,
+        targetSeconds,
       ),
     )
     .filter((observation): observation is CalibrationObservation =>
@@ -990,9 +981,10 @@ export async function trainAndValidate(
     );
   if (calibrationObservations.length < 100) {
     throw new Error(
-      `Only ${calibrationObservations.length} calibration markets were available`,
+      `Only ${calibrationObservations.length} calibration markets were available at ${targetSeconds} seconds`,
     );
   }
+
   const calibration = selectCalibration(calibrationObservations);
   const calibrationEvaluations = calibrationMarkets
     .map((market) =>
@@ -1003,6 +995,7 @@ export async function trainAndValidate(
         means,
         standardDeviations,
         calibration,
+        targetSeconds,
       ),
     )
     .filter((evaluation): evaluation is MarketEvaluation =>
@@ -1022,6 +1015,7 @@ export async function trainAndValidate(
         means,
         standardDeviations,
         calibration,
+        targetSeconds,
       ),
     )
     .filter((evaluation): evaluation is MarketEvaluation =>
@@ -1029,16 +1023,17 @@ export async function trainAndValidate(
     );
   if (evaluations.length < 40) {
     throw new Error(
-      `Only ${evaluations.length} holdout markets were available`,
+      `Only ${evaluations.length} holdout markets were available at ${targetSeconds} seconds`,
     );
   }
+
   const qualifiedEvaluations = selectedEvaluations(
     evaluations,
     signalThreshold,
   );
   if (qualifiedEvaluations.length < 20) {
     throw new Error(
-      `Only ${qualifiedEvaluations.length} qualified holdout markets were available`,
+      `Only ${qualifiedEvaluations.length} qualified holdout markets were available at ${targetSeconds} seconds`,
     );
   }
 
@@ -1087,10 +1082,7 @@ export async function trainAndValidate(
     }, 0) / evaluations.length;
 
   return {
-    name: "Calibrated multi-horizon market ensemble v3",
-    trainedAt: new Date().toISOString(),
-    trainingMarkets: trainingMarkets.length,
-    calibrationMarkets: calibrationObservations.length,
+    targetSeconds,
     evaluationMarkets: evaluations.length,
     holdoutMarkets: qualifiedEvaluations.length,
     hitRate: rounded((correct / qualifiedEvaluations.length) * 100),
@@ -1121,15 +1113,104 @@ export async function trainAndValidate(
     netPaperReturn: rounded(
       totalNetCost > 0 ? (totalNetProfit / totalNetCost) * 100 : 0,
     ),
-    assetStats: summarizeAssetEvaluations(qualifiedEvaluations),
-    performance: aggregatePerformance(qualifiedEvaluations),
-    weights,
-    means,
-    standardDeviations,
     calibrationIntercept: calibration.intercept,
     calibrationSlope: calibration.slope,
     marketBlendWeight: calibration.marketBlendWeight,
     reliableAssets,
+    assetStats: summarizeAssetEvaluations(qualifiedEvaluations),
+    performance: aggregatePerformance(qualifiedEvaluations),
+  };
+}
+
+export async function trainAndValidate(
+  fetcher: KalshiFetcher,
+): Promise<ValidatedKalshiModel> {
+  const markets = await fetchSettledMarkets(fetcher);
+  if (markets.length < 1_000) {
+    throw new Error(`Only ${markets.length} settled markets were available`);
+  }
+  const candlesByTicker = await fetchCandleHistory(fetcher, markets);
+  const trainingSplitIndex = Math.floor(markets.length * TRAINING_FRACTION);
+  const calibrationSplitIndex = Math.floor(
+    markets.length * (TRAINING_FRACTION + CALIBRATION_FRACTION),
+  );
+  const trainingCutoffTime = Date.parse(markets[trainingSplitIndex].close_time);
+  const calibrationCutoffTime = Date.parse(
+    markets[calibrationSplitIndex].close_time,
+  );
+  const trainingMarkets = markets.filter(
+    (market) => Date.parse(market.close_time) < trainingCutoffTime,
+  );
+  const calibrationMarkets = markets.filter(
+    (market) =>
+      Date.parse(market.close_time) >= trainingCutoffTime &&
+      Date.parse(market.close_time) < calibrationCutoffTime,
+  );
+  const holdoutMarkets = markets.filter(
+    (market) => Date.parse(market.close_time) >= calibrationCutoffTime,
+  );
+  const trainingSamples = trainingMarkets.flatMap((market) =>
+    trainingSamplesForMarket(market, candlesByTicker.get(market.ticker) ?? []),
+  );
+  if (trainingSamples.length < 2_000) {
+    throw new Error(
+      `Only ${trainingSamples.length} training samples were available`,
+    );
+  }
+
+  const { means, standardDeviations } = featureStatistics(trainingSamples);
+  const weights = trainLogisticRegression(
+    trainingSamples,
+    means,
+    standardDeviations,
+  );
+  const horizons = VALIDATED_HORIZON_SECONDS.map((targetSeconds) =>
+    validateHorizon(
+      targetSeconds,
+      calibrationMarkets,
+      holdoutMarkets,
+      candlesByTicker,
+      weights,
+      means,
+      standardDeviations,
+    ),
+  );
+  const primaryHorizon = horizons.reduce((closest, horizon) =>
+    Math.abs(horizon.targetSeconds - 300) <
+    Math.abs(closest.targetSeconds - 300)
+      ? horizon
+      : closest,
+  );
+
+  return {
+    name: "Continuously calibrated multi-horizon market ensemble v4",
+    trainedAt: new Date().toISOString(),
+    trainingMarkets: trainingMarkets.length,
+    calibrationMarkets: calibrationMarkets.length,
+    evaluationMarkets: primaryHorizon.evaluationMarkets,
+    holdoutMarkets: primaryHorizon.holdoutMarkets,
+    hitRate: primaryHorizon.hitRate,
+    hitRateLowerBound: primaryHorizon.hitRateLowerBound,
+    baselineHitRate: primaryHorizon.baselineHitRate,
+    brierScore: primaryHorizon.brierScore,
+    marketBrierScore: primaryHorizon.marketBrierScore,
+    brierSkillScore: primaryHorizon.brierSkillScore,
+    logLoss: primaryHorizon.logLoss,
+    expectedCalibrationError: primaryHorizon.expectedCalibrationError,
+    signalCoverage: primaryHorizon.signalCoverage,
+    confidenceThreshold: primaryHorizon.confidenceThreshold,
+    grossPaperReturn: primaryHorizon.grossPaperReturn,
+    netPaperReturn: primaryHorizon.netPaperReturn,
+    assetStats: primaryHorizon.assetStats,
+    performance: primaryHorizon.performance,
+    weights,
+    means,
+    standardDeviations,
+    calibrationIntercept: primaryHorizon.calibrationIntercept,
+    calibrationSlope: primaryHorizon.calibrationSlope,
+    marketBlendWeight: primaryHorizon.marketBlendWeight,
+    reliableAssets: primaryHorizon.reliableAssets,
+    horizons,
   };
 }
 
@@ -1149,11 +1230,59 @@ export async function getValidatedKalshiModel(
   return trainingPromise;
 }
 
+function legacyFiveMinuteHorizon(
+  model: ValidatedKalshiModel,
+): ValidatedKalshiHorizon {
+  return {
+    targetSeconds: 300,
+    evaluationMarkets: model.evaluationMarkets,
+    holdoutMarkets: model.holdoutMarkets,
+    hitRate: model.hitRate,
+    hitRateLowerBound: model.hitRateLowerBound,
+    baselineHitRate: model.baselineHitRate,
+    brierScore: model.brierScore,
+    marketBrierScore: model.marketBrierScore,
+    brierSkillScore: model.brierSkillScore,
+    logLoss: model.logLoss,
+    expectedCalibrationError: model.expectedCalibrationError,
+    signalCoverage: model.signalCoverage,
+    confidenceThreshold: model.confidenceThreshold,
+    grossPaperReturn: model.grossPaperReturn,
+    netPaperReturn: model.netPaperReturn,
+    calibrationIntercept: model.calibrationIntercept,
+    calibrationSlope: model.calibrationSlope,
+    marketBlendWeight: model.marketBlendWeight,
+    reliableAssets: model.reliableAssets,
+    assetStats: model.assetStats,
+    performance: model.performance,
+  };
+}
+
+export function validatedHorizonFor(
+  model: ValidatedKalshiModel,
+  secondsToClose: number,
+): ValidatedKalshiHorizon {
+  const horizons = model.horizons?.length
+    ? model.horizons
+    : [legacyFiveMinuteHorizon(model)];
+  return horizons.reduce((closest, horizon) =>
+    Math.abs(horizon.targetSeconds - secondsToClose) <
+    Math.abs(closest.targetSeconds - secondsToClose)
+      ? horizon
+      : closest,
+  );
+}
+
 export function predictLiveMarket(
   market: KalshiApiMarket,
   candles: KalshiApiCandle[],
   model: ValidatedKalshiModel,
 ): LivePrediction {
+  const secondsToClose = Math.max(
+    0,
+    Math.floor((Date.parse(market.close_time) - Date.now()) / 1_000),
+  );
+  const horizon = validatedHorizonFor(model, secondsToClose);
   const ordered = orderedCandles(candles);
   const latestIndex = Math.max(0, ordered.length - 1);
   const marketQuote = quoteFromMarket(market);
@@ -1202,9 +1331,9 @@ export function predictLiveMarket(
     baseProbability,
     marketQuote.probability,
     {
-      intercept: model.calibrationIntercept ?? 0,
-      slope: model.calibrationSlope ?? 1,
-      marketBlendWeight: model.marketBlendWeight ?? 0,
+      intercept: horizon.calibrationIntercept,
+      slope: horizon.calibrationSlope,
+      marketBlendWeight: horizon.marketBlendWeight,
     },
   );
 
@@ -1212,5 +1341,6 @@ export function predictLiveMarket(
     yesProbability: calibratedProbability,
     marketYesProbability: marketQuote.probability,
     spread: marketQuote.spread,
+    horizon,
   };
 }

@@ -29,7 +29,7 @@ export const translations = {
     everyHour: "Every hour",
     every24: "Every 24 hours",
     pollingNote:
-      "Three-minute polling keeps the forward record near the five-minute evaluation point.",
+      "Frequent refresh keeps the active 1–14 minute validation horizon current.",
     print: "Print or save PDF",
     toggleDark: "Use dark mode",
     toggleLight: "Use light mode",
@@ -61,7 +61,9 @@ export const translations = {
     livePredictions: "Live probabilistic predictions",
     ranked: "ranked",
     noSignals:
-      "No current signal meets the filters. The app will wait for fresh data and the validated 3–7 minute window before close.",
+      "No current prediction is available yet. Market prices remain visible below while the first verified one-minute candle arrives.",
+    filterFallback:
+      "No prediction reaches the selected minimum right now, so the current market probabilities are shown instead.",
     favorable: "Favorable setup",
     wait: "Wait / monitor",
     avoid: "No reliable edge",
@@ -78,8 +80,10 @@ export const translations = {
     showDetails: "View calculation details",
     rawProbability: "Raw calibrated estimate",
     safetyAdjustment: "Safety adjustment",
-    readySignal: "Inside validated window",
-    outsideWindow: "Waiting for 3–7 minute window",
+    readySignal: "Current horizon validated",
+    outsideWindow: "Nearest validated horizon selected",
+    horizonEvidence: (minutes: number, hitRate: string, samples: number) =>
+      `${minutes}-minute horizon · ${hitRate} hit rate across ${samples} unseen qualified signals`,
     staleCandles: "Recent candles unavailable",
     insufficientHistory: "Not enough recent history",
     wideSpread: "Spread too wide",
@@ -112,7 +116,7 @@ export const translations = {
     confidenceFloor: "95% lower bound",
     coverage: "Coverage",
     fiveMinutes:
-      "Five minutes before close · calibrated probabilities · taker fee estimate included",
+      "Current 1–14 minute horizon · calibrated probabilities · taker fee estimate included",
     context: "05 / context",
     dataStatus: "Data status",
     estimatedPaperReturn: "Qualified net paper return",
@@ -203,7 +207,7 @@ export const translations = {
     everyHour: "Cada hora",
     every24: "Cada 24 horas",
     pollingNote:
-      "La consulta cada tres minutos mantiene el registro cerca del punto de evaluación de cinco minutos.",
+      "La actualización frecuente mantiene vigente el horizonte validado de 1 a 14 minutos.",
     print: "Imprimir o guardar PDF",
     toggleDark: "Usar modo oscuro",
     toggleLight: "Usar modo claro",
@@ -235,7 +239,9 @@ export const translations = {
     livePredictions: "Predicciones probabilísticas actuales",
     ranked: "ordenadas",
     noSignals:
-      "Ninguna señal actual cumple los filtros. La app esperará datos recientes y la ventana validada de 3 a 7 minutos antes del cierre.",
+      "Todavía no hay una predicción actual. Los precios del mercado siguen visibles abajo mientras llega la primera vela verificada de un minuto.",
+    filterFallback:
+      "Ninguna predicción alcanza ahora el mínimo seleccionado, así que se muestran las probabilidades actuales del mercado.",
     favorable: "Configuración favorable",
     wait: "Esperar / vigilar",
     avoid: "Sin ventaja fiable",
@@ -252,8 +258,10 @@ export const translations = {
     showDetails: "Ver detalles del cálculo",
     rawProbability: "Estimación calibrada original",
     safetyAdjustment: "Margen de seguridad",
-    readySignal: "Dentro de la ventana validada",
-    outsideWindow: "Esperando ventana de 3 a 7 minutos",
+    readySignal: "Horizonte actual validado",
+    outsideWindow: "Se seleccionó el horizonte validado más cercano",
+    horizonEvidence: (minutes: number, hitRate: string, samples: number) =>
+      `Horizonte de ${minutes} min · ${hitRate} de acierto en ${samples} señales calificadas no vistas`,
     staleCandles: "No hay velas recientes disponibles",
     insufficientHistory: "No hay suficiente historial reciente",
     wideSpread: "Diferencia de precios demasiado amplia",
@@ -286,7 +294,7 @@ export const translations = {
     confidenceFloor: "Límite inferior al 95%",
     coverage: "Cobertura",
     fiveMinutes:
-      "Cinco minutos antes del cierre · probabilidades calibradas · comisión estimada incluida",
+      "Horizonte actual de 1 a 14 minutos · probabilidades calibradas · comisión estimada incluida",
     context: "05 / contexto",
     dataStatus: "Estado de los datos",
     estimatedPaperReturn: "Rentabilidad neta simulada calificada",

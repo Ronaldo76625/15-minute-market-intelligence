@@ -20,6 +20,8 @@ export interface KalshiDashboard {
   dataFreshness: KalshiDashboardDataFreshness;
   dataAgeSeconds: number;
   hasUsablePredictions: boolean;
+  /** Whether current probabilities are shown below the requested minimum to avoid an empty information state. */
+  filterFallbackActive: boolean;
   totalMarkets: number;
   activeSignals: number;
   averageConfidence: number;

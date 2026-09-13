@@ -43,6 +43,7 @@ export const GetKalshiDashboardResponse = zod.object({
   "dataFreshness": zod.enum(['live', 'delayed', 'stale']),
   "dataAgeSeconds": zod.number().int(),
   "hasUsablePredictions": zod.boolean(),
+  "filterFallbackActive": zod.boolean().describe('Whether current probabilities are shown below the requested minimum to avoid an empty information state.'),
   "totalMarkets": zod.number().int(),
   "activeSignals": zod.number().int(),
   "averageConfidence": zod.number(),
@@ -133,8 +134,13 @@ export const GetKalshiDashboardResponse = zod.object({
   "secondsToClose": zod.number().int(),
   "latestCandleAgeSeconds": zod.number().int(),
   "dataQualityOk": zod.boolean(),
-  "isQualified": zod.boolean().describe('Whether the signal has current candles and falls inside the model\'s validated timing window.'),
-  "qualificationReason": zod.enum(['ready', 'outside_window', 'insufficient_history', 'stale_candles', 'wide_spread'])
+  "isQualified": zod.boolean().describe('Whether the signal has current candles and acceptable market data quality.'),
+  "qualificationReason": zod.enum(['ready', 'outside_window', 'insufficient_history', 'stale_candles', 'wide_spread']),
+  "horizonMinutes": zod.number().describe('Closest independently calibrated validation horizon selected for the current time to close.'),
+  "horizonHitRate": zod.number().describe('Qualified accuracy for this horizon in the untouched chronological evaluation.'),
+  "horizonHitRateLowerBound": zod.number().describe('Conservative 95 percent Wilson lower confidence bound for this horizon\'s qualified hit rate.'),
+  "horizonSampleSize": zod.number().int().describe('Number of qualified signals evaluated for this horizon.'),
+  "horizonConfidenceThreshold": zod.number().describe('Validation-selected probability threshold for this horizon.')
 })),
   "priceHistory": zod.array(zod.object({
   "time": zod.string(),

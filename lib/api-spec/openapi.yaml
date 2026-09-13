@@ -152,6 +152,11 @@ components:
         - dataQualityOk
         - isQualified
         - qualificationReason
+        - horizonMinutes
+        - horizonHitRate
+        - horizonHitRateLowerBound
+        - horizonSampleSize
+        - horizonConfidenceThreshold
       properties:
         id:
           type: string
@@ -228,7 +233,7 @@ components:
           type: boolean
         isQualified:
           type: boolean
-          description: Whether the signal has current candles and falls inside the model's validated timing window.
+          description: Whether the signal has current candles and acceptable market data quality.
         qualificationReason:
           type: string
           enum:
@@ -239,6 +244,21 @@ components:
               stale_candles,
               wide_spread,
             ]
+        horizonMinutes:
+          type: number
+          description: Closest independently calibrated validation horizon selected for the current time to close.
+        horizonHitRate:
+          type: number
+          description: Qualified accuracy for this horizon in the untouched chronological evaluation.
+        horizonHitRateLowerBound:
+          type: number
+          description: Conservative 95 percent Wilson lower confidence bound for this horizon's qualified hit rate.
+        horizonSampleSize:
+          type: integer
+          description: Number of qualified signals evaluated for this horizon.
+        horizonConfidenceThreshold:
+          type: number
+          description: Validation-selected probability threshold for this horizon.
     KalshiPricePoint:
       type: object
       required:
@@ -382,6 +402,7 @@ components:
         - dataFreshness
         - dataAgeSeconds
         - hasUsablePredictions
+        - filterFallbackActive
         - totalMarkets
         - activeSignals
         - averageConfidence
@@ -423,6 +444,9 @@ components:
           type: integer
         hasUsablePredictions:
           type: boolean
+        filterFallbackActive:
+          type: boolean
+          description: Whether current probabilities are shown below the requested minimum to avoid an empty information state.
         totalMarkets:
           type: integer
         activeSignals:
