@@ -1,7 +1,10 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
-import { useGetKalshiDashboard } from "@workspace/api-client-react";
+import {
+  useGetKalshiDashboard,
+  type KalshiEarlyObservation,
+} from "@workspace/api-client-react";
 import {
   Area,
   AreaChart,
@@ -61,6 +64,7 @@ const chartColors = {
   ink: "#1d2935",
 };
 const intervals = [
+  { key: "every1" as const, ms: 60 * 1000 },
   { key: "every3" as const, ms: 3 * 60 * 1000 },
   { key: "every5" as const, ms: 5 * 60 * 1000 },
   { key: "every15" as const, ms: 15 * 60 * 1000 },
@@ -106,6 +110,68 @@ function qualificationLabel(value: string, language: Language) {
   if (value === "insufficient_history") return copy.insufficientHistory;
   if (value === "wide_spread") return copy.wideSpread;
   return copy.outsideWindow;
+}
+
+function EarlyReadingCell({
+  observation,
+  pendingText,
+  language,
+}: {
+  observation?: KalshiEarlyObservation;
+  pendingText: string;
+  language: Language;
+}) {
+  const copy = translations[language];
+  if (!observation) {
+    return (
+      <div className="max-w-[250px] text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-1">
+          <RefreshCw size={11} /> {pendingText}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="min-w-[205px]">
+      <div className="flex items-center gap-2">
+        <span
+          className={`rounded px-2 py-1 font-mono text-[10px] font-bold ${
+            observation.side === "YES"
+              ? "bg-accent/10 text-accent"
+              : "bg-primary/10 text-primary"
+          }`}
+        >
+          {observation.confidence <= 50.5
+            ? copy.uncertainDirection
+            : observation.side === "YES"
+              ? copy.yesOutcome
+              : copy.noOutcome}
+        </span>
+        <strong className="font-mono text-sm">
+          {formatPercent(observation.confidence)}
+        </strong>
+      </div>
+      <p className="mt-2 font-mono text-[10px] text-muted-foreground">
+        YES {formatPercent(observation.yesProbability)} · NO{" "}
+        {formatPercent(observation.noProbability)}
+      </p>
+      <p className="mt-1 text-[10px] text-muted-foreground">
+        {copy.recordedAt(formatTime(observation.observedAt, language))}
+      </p>
+      <p className="mt-1 max-w-[250px] text-[10px] leading-relaxed text-muted-foreground">
+        {copy.earlyEvidence(
+          formatPercent(observation.horizonHitRate),
+          formatPercent(observation.horizonHitRateLowerBound),
+          observation.horizonSampleSize,
+        )}
+      </p>
+      {!observation.isQualified ? (
+        <p className="mt-1 text-[10px] font-semibold text-destructive">
+          {qualificationLabel(observation.qualificationReason, language)}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 function MarketCloseTime({
@@ -629,6 +695,160 @@ function Home() {
               </p>
             </div>
           ))}
+        </div>
+
+        <div className="mb-6">
+          <Panel title={copy.earlyTitle} eyebrow={copy.earlyEyebrow}>
+            <div className="border-b border-border/70 px-5 py-3">
+              <p className="max-w-4xl text-xs leading-relaxed text-muted-foreground">
+                {copy.earlyBody}
+              </p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1120px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-border/70 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                    <th className="px-5 py-3 font-medium">
+                      {copy.earlyMarket}
+                    </th>
+                    <th className="px-4 py-3 font-medium">
+                      {copy.earlyMinute1}
+                    </th>
+                    <th className="px-4 py-3 font-medium">
+                      {copy.earlyMinute2}
+                    </th>
+                    <th className="px-5 py-3 font-medium">
+                      {copy.earlyDecision}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading && !dashboard?.earlyForecasts?.length ? (
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <tr className="border-b border-border/70" key={index}>
+                        <td className="px-5 py-5">
+                          <SkeletonBlock className="h-10 w-44" />
+                        </td>
+                        <td className="px-4 py-5">
+                          <SkeletonBlock className="h-16 w-52" />
+                        </td>
+                        <td className="px-4 py-5">
+                          <SkeletonBlock className="h-16 w-52" />
+                        </td>
+                        <td className="px-5 py-5">
+                          <SkeletonBlock className="h-12 w-44" />
+                        </td>
+                      </tr>
+                    ))
+                  ) : !dashboard?.earlyForecasts?.length ? (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="px-5 py-10 text-center text-sm text-muted-foreground"
+                      >
+                        {copy.noEarlyMarkets}
+                      </td>
+                    </tr>
+                  ) : (
+                    dashboard.earlyForecasts.map((forecast) => {
+                      const finalReading =
+                        forecast.confirmation ??
+                        forecast.initial ??
+                        forecast.current;
+                      const agreementText =
+                        forecast.agreement === "confirmed"
+                          ? copy.confirmedReading
+                          : forecast.agreement === "revised"
+                            ? copy.revisedReading
+                            : copy.pendingReading;
+                      return (
+                        <tr
+                          key={forecast.ticker}
+                          className="border-b border-border/70 align-top last:border-0"
+                        >
+                          <td className="px-5 py-5">
+                            <strong className="text-sm">
+                              {forecast.asset}
+                            </strong>
+                            <p className="mt-1 max-w-[260px] text-xs text-muted-foreground">
+                              {localizedMarketTitle(forecast.title, language)}
+                            </p>
+                            <p className="mt-2 font-mono text-[10px] text-muted-foreground">
+                              {copy.previousClose}:{" "}
+                              {forecast.previousResult === "YES"
+                                ? copy.previousUp
+                                : forecast.previousResult === "NO"
+                                  ? copy.previousDown
+                                  : copy.previousPending}
+                            </p>
+                          </td>
+                          <td className="px-4 py-5">
+                            <EarlyReadingCell
+                              observation={forecast.initial}
+                              pendingText={copy.collectingMinute1}
+                              language={language}
+                            />
+                          </td>
+                          <td className="px-4 py-5">
+                            <EarlyReadingCell
+                              observation={forecast.confirmation}
+                              pendingText={
+                                forecast.initial
+                                  ? copy.collectingMinute2
+                                  : copy.collectingMinute1
+                              }
+                              language={language}
+                            />
+                          </td>
+                          <td className="px-5 py-5">
+                            <span
+                              className={`inline-flex rounded px-2 py-1 text-[10px] font-bold ${recommendationClass(forecast.recommendation)}`}
+                            >
+                              {recommendationLabel(
+                                forecast.recommendation,
+                                language,
+                              )}
+                            </span>
+                            <div className="mt-2 flex items-center gap-2">
+                              {forecast.agreement === "confirmed" ? (
+                                <Check size={14} className="text-accent" />
+                              ) : forecast.agreement === "revised" ? (
+                                <X size={14} className="text-destructive" />
+                              ) : (
+                                <RefreshCw
+                                  size={13}
+                                  className="text-muted-foreground"
+                                />
+                              )}
+                              <span className="text-xs font-semibold">
+                                {agreementText}
+                              </span>
+                            </div>
+                            <p className="mt-2 font-mono text-[10px] text-muted-foreground">
+                              {finalReading.confidence <= 50.5
+                                ? copy.uncertainDirection
+                                : finalReading.side === "YES"
+                                  ? copy.yesOutcome
+                                  : copy.noOutcome}
+                              {" · "}
+                              {formatPercent(finalReading.confidence)}
+                            </p>
+                            <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+                              {copy.netEv}{" "}
+                              {formatPercent(finalReading.netExpectedValue)}
+                            </p>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <p className="border-t border-border/70 px-5 py-3 text-[11px] leading-relaxed text-muted-foreground">
+              {copy.earlySafetyNote}
+            </p>
+          </Panel>
         </div>
 
         <details className="data-card group mb-6 rounded-xl">

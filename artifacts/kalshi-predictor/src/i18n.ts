@@ -15,7 +15,7 @@ export const translations = {
     delayedDataBody:
       "The latest verified snapshot is delayed. Treat probabilities with caution.",
     staleDataBody:
-      "Predictions are paused because the verified market data is too old.",
+      "The last probabilities remain visible for context, but favorable signals are paused until fresh data arrives.",
     snapshotSource: "Snapshot source",
     kalshiFeed: "Kalshi feed",
     asOf: "as of",
@@ -23,6 +23,7 @@ export const translations = {
     refresh: "Refresh",
     refreshOptions: "Refresh options",
     autoRefresh: "Auto-refresh",
+    every1: "Every minute",
     every3: "Every 3 min",
     every5: "Every 5 min",
     every15: "Every 15 min",
@@ -48,6 +49,29 @@ export const translations = {
     qualifiedNote: (samples: number, coverage: string) =>
       `${samples} unseen signals · ${coverage} coverage`,
     chronologicalTest: "Untouched chronological test",
+    earlyEyebrow: "00 / early contract forecast",
+    earlyTitle: "Opening forecast: minute 1 + minute 2",
+    earlyBody:
+      "The first reading is recorded after one complete minute and checked again after two. A favorable setup requires both readings to agree and pass their separate chronological validation.",
+    earlyMarket: "Contract",
+    earlyMinute1: "Minute 1 reading",
+    earlyMinute2: "Minute 2 confirmation",
+    earlyDecision: "Conservative view",
+    previousClose: "Previous contract",
+    previousUp: "finished UP / YES",
+    previousDown: "finished DOWN / NO",
+    previousPending: "result pending",
+    collectingMinute1: "Collecting the first complete minute",
+    collectingMinute2: "First reading saved; awaiting minute 2",
+    confirmedReading: "Both readings agree",
+    revisedReading: "Readings disagree — no clear edge",
+    pendingReading: "Confirmation pending",
+    recordedAt: (time: string) => `Recorded at ${time}`,
+    earlyEvidence: (hitRate: string, lowerBound: string, samples: number) =>
+      `${hitRate} qualified hit rate · ${lowerBound} conservative floor · ${samples} unseen signals`,
+    earlySafetyNote:
+      "This table never places trades. Its probabilities are experimental estimates; “favorable” is shown only after agreement, data-quality checks, validation thresholds, and positive estimated value after fees.",
+    noEarlyMarkets: "Waiting for the next active Kalshi contract.",
     predictionControls: "Prediction controls",
     advancedFilters: "Advanced filters",
     controlsDescription:
@@ -76,6 +100,7 @@ export const translations = {
     predictedChance: "calibrated chance",
     yesOutcome: "GOES UP / YES",
     noOutcome: "DOES NOT GO UP / NO",
+    uncertainDirection: "NO CLEAR DIRECTION",
     saferEstimate: "conservative probability",
     showDetails: "View calculation details",
     rawProbability: "Raw calibrated estimate",
@@ -193,7 +218,7 @@ export const translations = {
     delayedDataBody:
       "La última captura verificada está retrasada. Interpreta las probabilidades con cautela.",
     staleDataBody:
-      "Las predicciones están pausadas porque los datos verificados son demasiado antiguos.",
+      "Las últimas probabilidades siguen visibles como contexto, pero las señales favorables se pausan hasta recibir datos recientes.",
     snapshotSource: "Fuente de la captura",
     kalshiFeed: "Datos de Kalshi",
     asOf: "a las",
@@ -201,6 +226,7 @@ export const translations = {
     refresh: "Actualizar",
     refreshOptions: "Opciones de actualización",
     autoRefresh: "Actualización automática",
+    every1: "Cada minuto",
     every3: "Cada 3 min",
     every5: "Cada 5 min",
     every15: "Cada 15 min",
@@ -226,6 +252,29 @@ export const translations = {
     qualifiedNote: (samples: number, coverage: string) =>
       `${samples} señales no vistas · cobertura ${coverage}`,
     chronologicalTest: "Prueba cronológica intacta",
+    earlyEyebrow: "00 / pronóstico inicial del contrato",
+    earlyTitle: "Pronóstico de apertura: minuto 1 + minuto 2",
+    earlyBody:
+      "La primera lectura se registra tras un minuto completo y se comprueba de nuevo después de dos. Para indicar una configuración favorable, ambas deben coincidir y aprobar su validación cronológica independiente.",
+    earlyMarket: "Contrato",
+    earlyMinute1: "Lectura del minuto 1",
+    earlyMinute2: "Confirmación del minuto 2",
+    earlyDecision: "Visión conservadora",
+    previousClose: "Contrato anterior",
+    previousUp: "terminó ARRIBA / SÍ",
+    previousDown: "terminó ABAJO / NO",
+    previousPending: "resultado pendiente",
+    collectingMinute1: "Recopilando el primer minuto completo",
+    collectingMinute2: "Primera lectura guardada; esperando el minuto 2",
+    confirmedReading: "Las dos lecturas coinciden",
+    revisedReading: "Las lecturas discrepan — sin ventaja clara",
+    pendingReading: "Confirmación pendiente",
+    recordedAt: (time: string) => `Registrada a las ${time}`,
+    earlyEvidence: (hitRate: string, lowerBound: string, samples: number) =>
+      `${hitRate} de acierto calificado · piso conservador ${lowerBound} · ${samples} señales no vistas`,
+    earlySafetyNote:
+      "Esta tabla nunca realiza operaciones. Sus probabilidades son estimaciones experimentales; “favorable” solo aparece tras coincidir ambas lecturas, superar los controles de calidad y validación, y conservar valor estimado positivo después de comisiones.",
+    noEarlyMarkets: "Esperando el próximo contrato activo de Kalshi.",
     predictionControls: "Controles de predicción",
     advancedFilters: "Filtros avanzados",
     controlsDescription:
@@ -254,6 +303,7 @@ export const translations = {
     predictedChance: "probabilidad calibrada",
     yesOutcome: "SUBE / SÍ",
     noOutcome: "NO SUBE / NO",
+    uncertainDirection: "SIN DIRECCIÓN CLARA",
     saferEstimate: "probabilidad conservadora",
     showDetails: "Ver detalles del cálculo",
     rawProbability: "Estimación calibrada original",

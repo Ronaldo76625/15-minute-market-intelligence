@@ -37,6 +37,11 @@ const MAX_CANDLE_AGE_SECONDS = 6 * 60;
 const MIN_CANDLE_COUNT = 1;
 const MAX_SUPPORTED_SPREAD = 0.1;
 const MARKET_INTERVAL_MS = 15 * 60 * 1_000;
+const EARLY_INITIAL_MAX_SECONDS_TO_CLOSE = 855;
+const EARLY_INITIAL_MIN_SECONDS_TO_CLOSE = 795;
+const EARLY_CONFIRMATION_MAX_SECONDS_TO_CLOSE = 794;
+const EARLY_CONFIRMATION_MIN_SECONDS_TO_CLOSE = 705;
+const DIRECT_EARLY_REFRESH_MAX_AGE_MS = 55 * 1_000;
 const MARKET_TIME_ZONE = "America/New_York";
 const PUBLISHED_SNAPSHOT_URL =
   "https://raw.githubusercontent.com/Ronaldo76625/15-minute-market-intelligence/live-data/live-data.json";
@@ -74,6 +79,53 @@ type ForwardTrackingStats = Omit<ForwardAssetStats, "asset"> & {
   assets: ForwardAssetStats[];
 };
 
+type EarlyForecastObservation = {
+  side: "YES" | "NO";
+  yesProbability: number;
+  noProbability: number;
+  confidence: number;
+  marketYesProbability: number;
+  netExpectedValue: number;
+  recommendation: "favorable" | "wait" | "avoid";
+  observedAt: string;
+  secondsToClose: number;
+  horizonMinutes: number;
+  horizonHitRate: number;
+  horizonHitRateLowerBound: number;
+  horizonSampleSize: number;
+  horizonConfidenceThreshold: number;
+  isQualified: boolean;
+  qualificationReason: LiveSignal["qualificationReason"];
+};
+
+type EarlyForecastRow = {
+  ticker: string;
+  asset: string;
+  title: string;
+  close_time: string;
+  previous_result: "YES" | "NO" | null;
+  initial_payload: string | null;
+  confirmation_payload: string | null;
+  result: "yes" | "no" | null;
+  settled_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type EarlyForecast = {
+  ticker: string;
+  asset: string;
+  title: string;
+  closeTime: string;
+  previousResult?: "YES" | "NO";
+  phase: "preliminary" | "initial" | "confirmed";
+  agreement: "pending" | "confirmed" | "revised";
+  recommendation: "favorable" | "wait" | "avoid";
+  initial?: EarlyForecastObservation;
+  confirmation?: EarlyForecastObservation;
+  current: EarlyForecastObservation;
+};
+
 type StoredSnapshot = {
   markets: Array<ReturnType<typeof toDashboardMarket>>;
   signals: LiveSignal[];
@@ -84,12 +136,15 @@ type StoredSnapshot = {
 type DataFreshness = "live" | "delayed" | "stale";
 type LiveSnapshot = StoredSnapshot & {
   liveTracking: ForwardTrackingStats;
+  earlyForecasts: EarlyForecast[];
   dataFreshness: DataFreshness;
   dataAgeSeconds: number;
 };
 export type KalshiSettlement = {
   ticker: string;
   result: "yes" | "no";
+  asset?: string;
+  closeTime?: string;
 };
 
 function numberFrom(value: string | number | undefined): number {
@@ -668,6 +723,224 @@ async function updatePaperSignalLedger(
   return summarizeRecords(records.results);
 }
 
+function toEarlyObservation(signal: LiveSignal): EarlyForecastObservation {
+  return {
+    side: signal.side,
+    yesProbability: signal.yesProbability,
+    noProbability: signal.noProbability,
+    confidence: signal.confidence,
+    marketYesProbability: signal.marketYesProbability,
+    netExpectedValue: signal.netExpectedValue,
+    recommendation: signal.recommendation,
+    observedAt: signal.updatedAt,
+    secondsToClose: signal.secondsToClose,
+    horizonMinutes: signal.horizonMinutes,
+    horizonHitRate: signal.horizonHitRate,
+    horizonHitRateLowerBound: signal.horizonHitRateLowerBound,
+    horizonSampleSize: signal.horizonSampleSize,
+    horizonConfidenceThreshold: signal.horizonConfidenceThreshold,
+    isQualified: signal.isQualified,
+    qualificationReason: signal.qualificationReason,
+  };
+}
+
+function parseEarlyObservation(
+  payload: string | null,
+): EarlyForecastObservation | undefined {
+  if (!payload) return undefined;
+  try {
+    const value = JSON.parse(payload) as Partial<EarlyForecastObservation>;
+    return value &&
+      (value.side === "YES" || value.side === "NO") &&
+      Number.isFinite(value.yesProbability) &&
+      Number.isFinite(value.noProbability) &&
+      Number.isFinite(value.confidence) &&
+      typeof value.observedAt === "string"
+      ? (value as EarlyForecastObservation)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function previousResultForMarket(
+  market: StoredSnapshot["markets"][number],
+  settlements: KalshiSettlement[],
+): "YES" | "NO" | undefined {
+  const currentClose = Date.parse(market.closeTime);
+  const previous = settlements
+    .filter(
+      (settlement) =>
+        settlement.asset === market.asset &&
+        typeof settlement.closeTime === "string" &&
+        Date.parse(settlement.closeTime) < currentClose,
+    )
+    .sort(
+      (left, right) =>
+        Date.parse(right.closeTime ?? "") - Date.parse(left.closeTime ?? ""),
+    )[0];
+  return previous ? (previous.result === "yes" ? "YES" : "NO") : undefined;
+}
+
+function earlyRecommendation(
+  initial: EarlyForecastObservation | undefined,
+  confirmation: EarlyForecastObservation | undefined,
+): "favorable" | "wait" | "avoid" {
+  if (!initial || !confirmation) return "wait";
+  if (initial.side !== confirmation.side) return "avoid";
+  const bothQualified = initial.isQualified && confirmation.isQualified;
+  const bothAboveThreshold =
+    initial.confidence >= initial.horizonConfidenceThreshold &&
+    confirmation.confidence >= confirmation.horizonConfidenceThreshold;
+  const conservativeEvidence =
+    initial.horizonHitRateLowerBound >= 60 &&
+    confirmation.horizonHitRateLowerBound >= 60;
+  if (
+    bothQualified &&
+    bothAboveThreshold &&
+    conservativeEvidence &&
+    initial.recommendation === "favorable" &&
+    confirmation.recommendation === "favorable" &&
+    confirmation.netExpectedValue >= 3
+  ) {
+    return "favorable";
+  }
+  return confirmation.recommendation === "avoid" ? "avoid" : "wait";
+}
+
+async function updateEarlyForecastLedger(
+  env: Env,
+  signals: LiveSignal[],
+  markets: StoredSnapshot["markets"],
+  settlements: KalshiSettlement[] = [],
+): Promise<EarlyForecast[]> {
+  if (settlements.length > 0) {
+    const pending = await env.DB.prepare(
+      "SELECT ticker FROM early_forecasts WHERE result IS NULL ORDER BY close_time DESC LIMIT 100",
+    ).all<{ ticker: string }>();
+    const resultByTicker = new Map(
+      settlements.map((settlement) => [settlement.ticker, settlement.result]),
+    );
+    const resolvedAt = new Date().toISOString();
+    const resolutions = pending.results.flatMap((row) => {
+      const result = resultByTicker.get(row.ticker);
+      return result
+        ? [
+            env.DB.prepare(
+              "UPDATE early_forecasts SET result = ?, settled_at = ?, updated_at = ? WHERE ticker = ? AND result IS NULL",
+            ).bind(result, resolvedAt, resolvedAt, row.ticker),
+          ]
+        : [];
+    });
+    if (resolutions.length > 0) await env.DB.batch(resolutions);
+  }
+
+  const signalByTicker = new Map(
+    signals.map((signal) => [signal.ticker, signal]),
+  );
+  const currentMarkets = markets.filter((market) =>
+    signalByTicker.has(market.ticker),
+  );
+  if (currentMarkets.length === 0) return [];
+
+  const tickers = currentMarkets.map((market) => market.ticker);
+  const placeholders = tickers.map(() => "?").join(", ");
+  const existingResult = await env.DB.prepare(
+    `SELECT * FROM early_forecasts WHERE ticker IN (${placeholders})`,
+  )
+    .bind(...tickers)
+    .all<EarlyForecastRow>();
+  const existingByTicker = new Map(
+    existingResult.results.map((row) => [row.ticker, row]),
+  );
+  const now = new Date().toISOString();
+  const statements = currentMarkets.map((market) => {
+    const signal = signalByTicker.get(market.ticker)!;
+    const existing = existingByTicker.get(market.ticker);
+    const observation = toEarlyObservation(signal);
+    const existingInitial = parseEarlyObservation(
+      existing?.initial_payload ?? null,
+    );
+    const observationsAreSeparated =
+      Boolean(existingInitial) &&
+      Date.parse(observation.observedAt) -
+        Date.parse(existingInitial?.observedAt ?? observation.observedAt) >=
+        45 * 1_000;
+    const canRecord = signal.isQualified;
+    const initialPayload =
+      !existing?.initial_payload &&
+      canRecord &&
+      signal.secondsToClose <= EARLY_INITIAL_MAX_SECONDS_TO_CLOSE &&
+      signal.secondsToClose >= EARLY_INITIAL_MIN_SECONDS_TO_CLOSE
+        ? JSON.stringify(observation)
+        : null;
+    const confirmationPayload =
+      !existing?.confirmation_payload &&
+      observationsAreSeparated &&
+      canRecord &&
+      signal.secondsToClose <= EARLY_CONFIRMATION_MAX_SECONDS_TO_CLOSE &&
+      signal.secondsToClose >= EARLY_CONFIRMATION_MIN_SECONDS_TO_CLOSE
+        ? JSON.stringify(observation)
+        : null;
+    const previousResult = previousResultForMarket(market, settlements);
+    return env.DB.prepare(
+      `INSERT INTO early_forecasts (
+        ticker, asset, title, close_time, previous_result,
+        initial_payload, confirmation_payload, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(ticker) DO UPDATE SET
+        previous_result = COALESCE(excluded.previous_result, early_forecasts.previous_result),
+        initial_payload = COALESCE(early_forecasts.initial_payload, excluded.initial_payload),
+        confirmation_payload = COALESCE(early_forecasts.confirmation_payload, excluded.confirmation_payload),
+        updated_at = excluded.updated_at`,
+    ).bind(
+      market.ticker,
+      market.asset,
+      market.title,
+      market.closeTime,
+      previousResult ?? null,
+      initialPayload,
+      confirmationPayload,
+      now,
+      now,
+    );
+  });
+  await env.DB.batch(statements);
+
+  const saved = await env.DB.prepare(
+    `SELECT * FROM early_forecasts WHERE ticker IN (${placeholders})`,
+  )
+    .bind(...tickers)
+    .all<EarlyForecastRow>();
+  const savedByTicker = new Map(saved.results.map((row) => [row.ticker, row]));
+
+  return currentMarkets.map((market) => {
+    const signal = signalByTicker.get(market.ticker)!;
+    const row = savedByTicker.get(market.ticker);
+    const initial = parseEarlyObservation(row?.initial_payload ?? null);
+    const confirmation = parseEarlyObservation(
+      row?.confirmation_payload ?? null,
+    );
+    return {
+      ticker: market.ticker,
+      asset: market.asset,
+      title: market.title,
+      closeTime: market.closeTime,
+      previousResult: row?.previous_result ?? undefined,
+      phase: confirmation ? "confirmed" : initial ? "initial" : "preliminary",
+      agreement: confirmation
+        ? initial?.side === confirmation.side
+          ? "confirmed"
+          : "revised"
+        : "pending",
+      recommendation: earlyRecommendation(initial, confirmation),
+      initial,
+      confirmation,
+      current: toEarlyObservation(signal),
+    } satisfies EarlyForecast;
+  });
+}
+
 export async function generateLiveMarketSnapshot(
   selectedModel: ValidatedKalshiModel = bundledModel,
   seriesTickers: readonly LiveSeries[] = LIVE_SERIES,
@@ -733,7 +1006,14 @@ export async function fetchRecentSettlements(
   );
   return response.markets.flatMap((market) =>
     market.result === "yes" || market.result === "no"
-      ? [{ ticker: market.ticker, result: market.result }]
+      ? [
+          {
+            ticker: market.ticker,
+            result: market.result,
+            asset: assetFor(market),
+            closeTime: market.close_time,
+          },
+        ]
       : [],
   );
 }
@@ -900,6 +1180,50 @@ async function refreshLiveSnapshot(
     settlements,
     snapshot.model.name,
   );
+  await updateEarlyForecastLedger(
+    env,
+    current.signals,
+    current.markets,
+    settlements,
+  );
+}
+
+function isEarlyContractWindow(snapshot: StoredSnapshot): boolean {
+  return snapshot.markets.some((market) => {
+    const secondsToClose = Math.floor(
+      (Date.parse(market.closeTime) - Date.now()) / 1_000,
+    );
+    return (
+      secondsToClose >= EARLY_CONFIRMATION_MIN_SECONDS_TO_CLOSE &&
+      secondsToClose <= EARLY_INITIAL_MAX_SECONDS_TO_CLOSE
+    );
+  });
+}
+
+async function refreshDirectlyWhenNeeded(
+  env: Env,
+  stored: StoredSnapshot | undefined,
+): Promise<StoredSnapshot | undefined> {
+  const current = stored ? removeExpiredMarkets(stored) : undefined;
+  const needsCurrentContract = !current?.markets.length;
+  const needsEarlyReading =
+    Boolean(current?.markets.length) &&
+    isEarlyContractWindow(current!) &&
+    snapshotAgeMs(current!) > DIRECT_EARLY_REFRESH_MAX_AGE_MS;
+  if (!needsCurrentContract && !needsEarlyReading) return stored;
+
+  try {
+    const incoming = await generateLiveMarketSnapshot();
+    const merged = mergeSnapshots(stored, incoming, LIVE_SERIES);
+    await writeStoredSnapshot(env, merged);
+    return merged;
+  } catch (error) {
+    console.warn(
+      "Unable to obtain the rollover or early Kalshi reading",
+      error,
+    );
+    return stored;
+  }
 }
 
 async function getLiveSnapshot(
@@ -942,21 +1266,30 @@ async function getLiveSnapshot(
       console.error("Unable to refresh directly from Kalshi", error);
     }
   }
+  stored = await refreshDirectlyWhenNeeded(env, stored);
   if (!stored) throw new Error("No verified Kalshi snapshot is available");
   const current = removeExpiredMarkets(stored);
   const dataFreshness = snapshotFreshness(current);
-  const currentSignals = dataFreshness === "stale" ? [] : current.signals;
+  const currentSignals = current.signals;
+  const liveTracking = await updatePaperSignalLedger(
+    env,
+    currentSignals,
+    settlements,
+    stored.model.name,
+  );
+  const earlyForecasts = await updateEarlyForecastLedger(
+    env,
+    currentSignals,
+    current.markets,
+    settlements,
+  );
   const snapshot: LiveSnapshot = {
     ...current,
     signals: currentSignals,
     dataFreshness,
     dataAgeSeconds: Math.floor(snapshotAgeMs(current) / 1_000),
-    liveTracking: await updatePaperSignalLedger(
-      env,
-      currentSignals,
-      settlements,
-      stored.model.name,
-    ),
+    liveTracking,
+    earlyForecasts,
   };
   const cachedResponse = new Response(JSON.stringify(snapshot), {
     headers: {
@@ -988,6 +1321,38 @@ async function syncPublishedSnapshot(env: Env): Promise<void> {
     published.settlements,
     published.snapshot.model.name,
   );
+  await updateEarlyForecastLedger(
+    env,
+    current.signals,
+    current.markets,
+    published.settlements,
+  );
+}
+
+async function maintainLiveSnapshot(env: Env): Promise<void> {
+  try {
+    await syncPublishedSnapshot(env);
+  } catch (error) {
+    console.warn("Unable to synchronize the published Kalshi snapshot", error);
+  }
+
+  let stored: StoredSnapshot | undefined;
+  try {
+    stored = await readStoredSnapshot(env);
+  } catch (error) {
+    console.warn(
+      "Unable to read the snapshot during scheduled maintenance",
+      error,
+    );
+  }
+  const current = stored ? removeExpiredMarkets(stored) : undefined;
+  if (
+    !current?.markets.length ||
+    (isEarlyContractWindow(current) &&
+      snapshotAgeMs(current) > DIRECT_EARLY_REFRESH_MAX_AGE_MS)
+  ) {
+    await refreshLiveSnapshot(env);
+  }
 }
 
 function isStoredSnapshot(
@@ -1039,7 +1404,7 @@ function isValidatedModel(value: unknown): value is ValidatedKalshiModel {
     Array.isArray(candidate.assetStats) &&
     Array.isArray(candidate.reliableAssets) &&
     Array.isArray(candidate.horizons) &&
-    candidate.horizons.length >= 4 &&
+    candidate.horizons.length >= 9 &&
     candidate.horizons.every(
       (horizon) =>
         Number.isFinite(horizon.targetSeconds) &&
@@ -1151,6 +1516,7 @@ function dashboardResponse(snapshot: LiveSnapshot, url: URL) {
       };
     }),
     liveTracking: snapshot.liveTracking,
+    earlyForecasts: snapshot.earlyForecasts,
     signals,
     priceHistory: snapshot.priceHistory,
     performance: evaluation.performance,
@@ -1189,6 +1555,6 @@ export default {
     return env.ASSETS.fetch(request);
   },
   async scheduled(_controller, env, ctx): Promise<void> {
-    ctx.waitUntil(syncPublishedSnapshot(env));
+    ctx.waitUntil(maintainLiveSnapshot(env));
   },
 } satisfies ExportedHandler<Env>;

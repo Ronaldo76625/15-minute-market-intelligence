@@ -7,6 +7,7 @@
  */
 import type { KalshiAssetStats } from './kalshiAssetStats';
 import type { KalshiDashboardDataFreshness } from './kalshiDashboardDataFreshness';
+import type { KalshiEarlyForecast } from './kalshiEarlyForecast';
 import type { KalshiForwardTracking } from './kalshiForwardTracking';
 import type { KalshiMarket } from './kalshiMarket';
 import type { KalshiPerformancePoint } from './kalshiPerformancePoint';
@@ -58,6 +59,7 @@ export interface KalshiDashboard {
   confidenceThreshold: number;
   assetStats: KalshiAssetStats[];
   liveTracking: KalshiForwardTracking;
+  earlyForecasts: KalshiEarlyForecast[];
   signals: KalshiSignal[];
   priceHistory: KalshiPricePoint[];
   performance: KalshiPerformancePoint[];

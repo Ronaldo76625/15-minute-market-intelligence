@@ -29,8 +29,8 @@ function assertPromotionQuality(
     ].filter(Boolean);
   });
   const failures = [
-    model.horizons.length < 8
-      ? "fewer than 8 independently validated horizons"
+    model.horizons.length < 9
+      ? "fewer than 9 independently validated horizons"
       : "",
     model.evaluationMarkets < 500
       ? "fewer than 500 untouched evaluation markets"

@@ -393,6 +393,112 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/KalshiForwardAssetStats"
+    KalshiEarlyObservation:
+      type: object
+      required:
+        [
+          side,
+          yesProbability,
+          noProbability,
+          confidence,
+          marketYesProbability,
+          netExpectedValue,
+          recommendation,
+          observedAt,
+          secondsToClose,
+          horizonMinutes,
+          horizonHitRate,
+          horizonHitRateLowerBound,
+          horizonSampleSize,
+          horizonConfidenceThreshold,
+          isQualified,
+          qualificationReason,
+        ]
+      properties:
+        side:
+          type: string
+          enum: [YES, NO]
+        yesProbability:
+          type: number
+        noProbability:
+          type: number
+        confidence:
+          type: number
+        marketYesProbability:
+          type: number
+        netExpectedValue:
+          type: number
+        recommendation:
+          type: string
+          enum: [favorable, wait, avoid]
+        observedAt:
+          type: string
+          format: date-time
+        secondsToClose:
+          type: integer
+        horizonMinutes:
+          type: number
+        horizonHitRate:
+          type: number
+        horizonHitRateLowerBound:
+          type: number
+        horizonSampleSize:
+          type: integer
+        horizonConfidenceThreshold:
+          type: number
+        isQualified:
+          type: boolean
+        qualificationReason:
+          type: string
+          enum:
+            [
+              ready,
+              outside_window,
+              insufficient_history,
+              stale_candles,
+              wide_spread,
+            ]
+    KalshiEarlyForecast:
+      type: object
+      required:
+        [
+          ticker,
+          asset,
+          title,
+          closeTime,
+          phase,
+          agreement,
+          recommendation,
+          current,
+        ]
+      properties:
+        ticker:
+          type: string
+        asset:
+          type: string
+        title:
+          type: string
+        closeTime:
+          type: string
+          format: date-time
+        previousResult:
+          type: string
+          enum: [YES, NO]
+        phase:
+          type: string
+          enum: [preliminary, initial, confirmed]
+        agreement:
+          type: string
+          enum: [pending, confirmed, revised]
+        recommendation:
+          type: string
+          enum: [favorable, wait, avoid]
+        initial:
+          $ref: "#/components/schemas/KalshiEarlyObservation"
+        confirmation:
+          $ref: "#/components/schemas/KalshiEarlyObservation"
+        current:
+          $ref: "#/components/schemas/KalshiEarlyObservation"
     KalshiDashboard:
       type: object
       required:
@@ -426,6 +532,7 @@ components:
         - confidenceThreshold
         - assetStats
         - liveTracking
+        - earlyForecasts
         - signals
         - priceHistory
         - performance
@@ -509,6 +616,10 @@ components:
             $ref: "#/components/schemas/KalshiAssetStats"
         liveTracking:
           $ref: "#/components/schemas/KalshiForwardTracking"
+        earlyForecasts:
+          type: array
+          items:
+            $ref: "#/components/schemas/KalshiEarlyForecast"
         signals:
           type: array
           items:

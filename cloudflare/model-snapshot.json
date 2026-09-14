@@ -1,19 +1,19 @@
 {
-  "name": "Continuously calibrated multi-horizon market ensemble v4",
-  "trainedAt": "2026-09-13T18:16:45.175Z",
+  "name": "Continuously calibrated multi-horizon market ensemble v5",
+  "trainedAt": "2026-09-13T21:11:07.830Z",
   "trainingMarkets": 4900,
   "calibrationMarkets": 1050,
   "evaluationMarkets": 1050,
-  "holdoutMarkets": 285,
+  "holdoutMarkets": 286,
   "hitRate": 95.1,
-  "hitRateLowerBound": 91.9,
+  "hitRateLowerBound": 92,
   "baselineHitRate": 95.1,
-  "brierScore": 0.1478,
-  "marketBrierScore": 0.1478,
+  "brierScore": 0.1494,
+  "marketBrierScore": 0.1494,
   "brierSkillScore": 0,
-  "logLoss": 0.4547,
-  "expectedCalibrationError": 4.99,
-  "signalCoverage": 27.1,
+  "logLoss": 0.4578,
+  "expectedCalibrationError": 4.59,
+  "signalCoverage": 27.2,
   "confidenceThreshold": 90,
   "grossPaperReturn": 0.8,
   "netPaperReturn": 0.4,
@@ -21,12 +21,12 @@
     {
       "asset": "BTC",
       "seriesTicker": "KXBTC15M",
-      "sampleSize": 31,
-      "hitRate": 93.5,
-      "grossReturn": -0.3,
-      "netReturn": -0.7,
-      "averageNetProfitCents": -0.65,
-      "maxDrawdown": 6.3,
+      "sampleSize": 30,
+      "hitRate": 93.3,
+      "grossReturn": -0.5,
+      "netReturn": -0.9,
+      "averageNetProfitCents": -0.88,
+      "maxDrawdown": 6.5,
       "profitable": false
     },
     {
@@ -35,31 +35,31 @@
       "sampleSize": 40,
       "hitRate": 97.5,
       "grossReturn": 3.8,
-      "netReturn": 3.3,
-      "averageNetProfitCents": 3.15,
+      "netReturn": 3.4,
+      "averageNetProfitCents": 3.19,
       "maxDrawdown": 2.5,
       "profitable": true
     },
     {
       "asset": "SOL",
       "seriesTicker": "KXSOL15M",
-      "sampleSize": 36,
-      "hitRate": 94.4,
-      "grossReturn": 0.1,
-      "netReturn": -0.3,
-      "averageNetProfitCents": -0.28,
-      "maxDrawdown": 2.8,
-      "profitable": false
+      "sampleSize": 39,
+      "hitRate": 94.9,
+      "grossReturn": 0.6,
+      "netReturn": 0.2,
+      "averageNetProfitCents": 0.23,
+      "maxDrawdown": 2.6,
+      "profitable": true
     },
     {
       "asset": "XRP",
       "seriesTicker": "KXXRP15M",
-      "sampleSize": 39,
-      "hitRate": 92.3,
-      "grossReturn": -1.6,
-      "netReturn": -2.1,
-      "averageNetProfitCents": -1.94,
-      "maxDrawdown": 7,
+      "sampleSize": 38,
+      "hitRate": 92.1,
+      "grossReturn": -2,
+      "netReturn": -2.4,
+      "averageNetProfitCents": -2.29,
+      "maxDrawdown": 7.2,
       "profitable": false
     },
     {
@@ -69,161 +69,161 @@
       "hitRate": 97.9,
       "grossReturn": 3.7,
       "netReturn": 3.3,
-      "averageNetProfitCents": 3.13,
+      "averageNetProfitCents": 3.11,
       "maxDrawdown": 2.1,
       "profitable": true
     },
     {
       "asset": "BNB",
       "seriesTicker": "KXBNB15M",
-      "sampleSize": 45,
-      "hitRate": 95.6,
-      "grossReturn": 1.4,
-      "netReturn": 1,
-      "averageNetProfitCents": 0.98,
-      "maxDrawdown": 3.1,
+      "sampleSize": 42,
+      "hitRate": 95.2,
+      "grossReturn": 1,
+      "netReturn": 0.6,
+      "averageNetProfitCents": 0.56,
+      "maxDrawdown": 3.3,
       "profitable": true
     },
     {
       "asset": "HYPE",
       "seriesTicker": "KXHYPE15M",
-      "sampleSize": 47,
-      "hitRate": 93.6,
-      "grossReturn": -1.9,
-      "netReturn": -2.2,
-      "averageNetProfitCents": -2.08,
-      "maxDrawdown": 4.8,
+      "sampleSize": 50,
+      "hitRate": 94,
+      "grossReturn": -1.4,
+      "netReturn": -1.7,
+      "averageNetProfitCents": -1.65,
+      "maxDrawdown": 4.5,
       "profitable": false
     }
   ],
   "performance": [
     {
-      "label": "Sep 12, 6 AM",
-      "cumulativeReturn": 6.7,
-      "hitRate": 100,
+      "label": "Sep 12, 10 AM",
+      "cumulativeReturn": 3.6,
+      "hitRate": 97.2,
       "trades": 36
     },
     {
-      "label": "Sep 12, 12 PM",
-      "cumulativeReturn": -1,
+      "label": "Sep 12, 3 PM",
+      "cumulativeReturn": -1.1,
       "hitRate": 93.1,
       "trades": 72
     },
     {
-      "label": "Sep 12, 4 PM",
-      "cumulativeReturn": 0.3,
-      "hitRate": 94.4,
-      "trades": 107
+      "label": "Sep 12, 8 PM",
+      "cumulativeReturn": -3.5,
+      "hitRate": 90.7,
+      "trades": 108
     },
     {
-      "label": "Sep 13, 12 AM",
-      "cumulativeReturn": -2.4,
+      "label": "Sep 13, 2 AM",
+      "cumulativeReturn": -2.7,
       "hitRate": 91.6,
       "trades": 143
     },
     {
-      "label": "Sep 13, 3 AM",
-      "cumulativeReturn": -1.5,
-      "hitRate": 92.7,
+      "label": "Sep 13, 6 AM",
+      "cumulativeReturn": -2.2,
+      "hitRate": 92.2,
       "trades": 179
     },
     {
-      "label": "Sep 13, 7 AM",
-      "cumulativeReturn": -0.8,
-      "hitRate": 93.5,
-      "trades": 214
-    },
-    {
       "label": "Sep 13, 9 AM",
-      "cumulativeReturn": -0.2,
-      "hitRate": 94.4,
-      "trades": 250
+      "cumulativeReturn": -1.1,
+      "hitRate": 93.5,
+      "trades": 215
     },
     {
-      "label": "Sep 13, 1 PM",
+      "label": "Sep 13, 11 AM",
+      "cumulativeReturn": -0.3,
+      "hitRate": 94.4,
+      "trades": 251
+    },
+    {
+      "label": "Sep 13, 4 PM",
       "cumulativeReturn": 0.4,
       "hitRate": 95.1,
-      "trades": 285
+      "trades": 286
     }
   ],
   "weights": [
-    0.055697791311529334,
-    1.3150540126319643,
-    0.6195338398679096,
-    -0.03187589082692489,
-    0.07301639583066913,
-    0.06051165847198691,
-    0.009213543594306914,
-    0.008143810402445691,
-    -0.018250963015427876,
-    -0.022027958058664237,
-    -0.011411366972492218,
-    -0.04694380883942778,
-    0.009473217403421021,
-    -0.0704785062000815,
-    0.004172546958785128,
-    0.0309378064224132,
-    0.06769362209268646,
-    -0.04678016971273715,
-    0.016641792975447958,
-    -0.015171800319104006,
-    0.039948699261946524,
-    0.00850514790439183,
-    0.0012367626303005001,
-    -0.049079841424750026
+    0.06396615747517649,
+    1.2860854669305308,
+    0.557193542967739,
+    -0.035516932319018465,
+    0.06440528302153568,
+    0.05261882127463541,
+    0.01057106370814322,
+    0.01592083760407474,
+    -0.01674882266760024,
+    -0.021740045940351796,
+    -0.016306599558386595,
+    -0.04076147655895396,
+    -0.00001373361021955903,
+    -0.06259680518093294,
+    0.0025193692668581467,
+    0.022137930733340493,
+    0.058647422268226744,
+    -0.05350688603378177,
+    0.021873208540815536,
+    -0.015000548777564151,
+    0.0346186242683955,
+    0.009481615831838383,
+    0.004587575765018648,
+    -0.04289799532183457
   ],
   "means": [
-    0.032970546345528665,
-    0.03480943877551085,
-    0.015856632653061312,
-    0.017557525510204387,
-    0.01998596938775539,
-    0.1346311224490065,
-    0.5249982993198632,
-    0.9602454317163837,
-    0.9226704898441738,
-    0.7276252961341159,
-    1.3795870777702661,
-    1.9525846938775824,
-    0.014019387755102102,
-    0.8827321227707452,
-    0.5531814285714378,
-    0.007507564199678905,
-    -0.0237437019795726,
-    0.1428571428571348,
-    0.1428571428571348,
-    0.1428571428571348,
-    0.1428571428571348,
-    0.1428571428571348,
-    0.1428571428571348
+    0.03093566887276177,
+    0.026502040816301694,
+    0.013786848072549028,
+    0.017546031746014535,
+    0.018919841269822598,
+    0.1362630385486296,
+    0.4814799697653203,
+    0.9465548502515891,
+    0.913181723619402,
+    0.7580253477534302,
+    1.2297443754802162,
+    1.831932426302168,
+    0.0159253968253813,
+    0.8730244321001317,
+    0.5210789342398541,
+    -0.02093658548653358,
+    -0.03473209155722255,
+    0.14285714285699005,
+    0.14285714285699005,
+    0.14285714285699005,
+    0.14285714285699005,
+    0.14285714285699005,
+    0.14285714285699005
   ],
   "standardDeviations": [
-    2.360936669131679,
-    2.9780686545797246,
-    2.446195635595976,
-    1.8995368186789299,
-    2.301629237129949,
-    0.1352358734965614,
-    0.2933264242334104,
-    0.2017318626414446,
-    0.18910584266502245,
-    0.23606117174284647,
-    1.3084784700255638,
-    1.647668375147007,
-    2.443977734079209,
-    0.18205304368973252,
-    0.33296463139070115,
-    0.7012707281588586,
-    0.7124599911037693,
-    0.3499271061120213,
-    0.34992710611202127,
-    0.3499271061120212,
-    0.34992710611202116,
-    0.34992710611202105,
-    0.349927106112021
+    2.2356089289079906,
+    2.8286637414970763,
+    2.4157933735098727,
+    1.8301300551743511,
+    2.2013691476144497,
+    0.13096737132834327,
+    0.3027063060944936,
+    0.20417340531619607,
+    0.19112000250237554,
+    0.23832361968027965,
+    1.3092858569505348,
+    1.612606773476541,
+    2.340537120673221,
+    0.18417625119864492,
+    0.33219738122962117,
+    0.6992128839490178,
+    0.7137623442875357,
+    0.3499271061117502,
+    0.3499271061117502,
+    0.3499271061117502,
+    0.34992710611175015,
+    0.34992710611175015,
+    0.3499271061117501
   ],
-  "calibrationIntercept": 0.21777314868260028,
-  "calibrationSlope": 1.1322588783960597,
+  "calibrationIntercept": -0.028050949003508865,
+  "calibrationSlope": 1.109568062553857,
   "marketBlendWeight": 1,
   "reliableAssets": [
     "BTC",
@@ -235,328 +235,21 @@
     {
       "targetSeconds": 840,
       "evaluationMarkets": 1050,
-      "holdoutMarkets": 191,
-      "hitRate": 75.9,
-      "hitRateLowerBound": 69.4,
-      "baselineHitRate": 75.9,
-      "brierScore": 0.2265,
-      "marketBrierScore": 0.2265,
+      "holdoutMarkets": 188,
+      "hitRate": 73.9,
+      "hitRateLowerBound": 67.2,
+      "baselineHitRate": 73.9,
+      "brierScore": 0.2278,
+      "marketBrierScore": 0.2278,
       "brierSkillScore": 0,
-      "logLoss": 0.6442,
-      "expectedCalibrationError": 4.08,
-      "signalCoverage": 18.2,
+      "logLoss": 0.6472,
+      "expectedCalibrationError": 3.81,
+      "signalCoverage": 17.9,
       "confidenceThreshold": 65,
-      "grossPaperReturn": 7.5,
-      "netPaperReturn": 5.3,
-      "calibrationIntercept": 0.013759086094555225,
-      "calibrationSlope": 1.4969927704234762,
-      "marketBlendWeight": 1,
-      "reliableAssets": [
-        "XRP",
-        "BNB"
-      ],
-      "assetStats": [
-        {
-          "asset": "BTC",
-          "seriesTicker": "KXBTC15M",
-          "sampleSize": 17,
-          "hitRate": 76.5,
-          "grossReturn": 8.1,
-          "netReturn": 5.9,
-          "averageNetProfitCents": 4.27,
-          "maxDrawdown": 11.8,
-          "profitable": true
-        },
-        {
-          "asset": "ETH",
-          "seriesTicker": "KXETH15M",
-          "sampleSize": 22,
-          "hitRate": 68.2,
-          "grossReturn": -3.4,
-          "netReturn": -5.3,
-          "averageNetProfitCents": -3.8,
-          "maxDrawdown": 17.2,
-          "profitable": false
-        },
-        {
-          "asset": "SOL",
-          "seriesTicker": "KXSOL15M",
-          "sampleSize": 31,
-          "hitRate": 74.2,
-          "grossReturn": 5.2,
-          "netReturn": 3.1,
-          "averageNetProfitCents": 2.23,
-          "maxDrawdown": 9.6,
-          "profitable": true
-        },
-        {
-          "asset": "XRP",
-          "seriesTicker": "KXXRP15M",
-          "sampleSize": 30,
-          "hitRate": 83.3,
-          "grossReturn": 16.8,
-          "netReturn": 14.5,
-          "averageNetProfitCents": 10.58,
-          "maxDrawdown": 5,
-          "profitable": true
-        },
-        {
-          "asset": "DOGE",
-          "seriesTicker": "KXDOGE15M",
-          "sampleSize": 22,
-          "hitRate": 81.8,
-          "grossReturn": 16.4,
-          "netReturn": 14,
-          "averageNetProfitCents": 10.05,
-          "maxDrawdown": 7.3,
-          "profitable": true
-        },
-        {
-          "asset": "BNB",
-          "seriesTicker": "KXBNB15M",
-          "sampleSize": 28,
-          "hitRate": 67.9,
-          "grossReturn": -5,
-          "netReturn": -6.8,
-          "averageNetProfitCents": -4.99,
-          "maxDrawdown": 17.4,
-          "profitable": false
-        },
-        {
-          "asset": "HYPE",
-          "seriesTicker": "KXHYPE15M",
-          "sampleSize": 41,
-          "hitRate": 78,
-          "grossReturn": 11.7,
-          "netReturn": 9.4,
-          "averageNetProfitCents": 6.73,
-          "maxDrawdown": 9.1,
-          "profitable": true
-        }
-      ],
-      "performance": [
-        {
-          "label": "Sep 12, 4 AM",
-          "cumulativeReturn": 20.5,
-          "hitRate": 87.5,
-          "trades": 24
-        },
-        {
-          "label": "Sep 12, 12 PM",
-          "cumulativeReturn": -7.1,
-          "hitRate": 66.7,
-          "trades": 48
-        },
-        {
-          "label": "Sep 12, 5 PM",
-          "cumulativeReturn": 2.1,
-          "hitRate": 73.6,
-          "trades": 72
-        },
-        {
-          "label": "Sep 12, 10 PM",
-          "cumulativeReturn": 3,
-          "hitRate": 74,
-          "trades": 96
-        },
-        {
-          "label": "Sep 13, 3 AM",
-          "cumulativeReturn": 8.7,
-          "hitRate": 78.3,
-          "trades": 120
-        },
-        {
-          "label": "Sep 13, 7 AM",
-          "cumulativeReturn": 2.2,
-          "hitRate": 73.6,
-          "trades": 144
-        },
-        {
-          "label": "Sep 13, 10 AM",
-          "cumulativeReturn": 2.4,
-          "hitRate": 73.8,
-          "trades": 168
-        },
-        {
-          "label": "Sep 13, 1 PM",
-          "cumulativeReturn": 5.3,
-          "hitRate": 75.9,
-          "trades": 191
-        }
-      ]
-    },
-    {
-      "targetSeconds": 720,
-      "evaluationMarkets": 1050,
-      "holdoutMarkets": 189,
-      "hitRate": 88.4,
-      "hitRateLowerBound": 83,
-      "baselineHitRate": 88.4,
-      "brierScore": 0.2005,
-      "marketBrierScore": 0.2005,
-      "brierSkillScore": 0,
-      "logLoss": 0.587,
-      "expectedCalibrationError": 4.47,
-      "signalCoverage": 18,
-      "confidenceThreshold": 75,
-      "grossPaperReturn": 9.1,
-      "netPaperReturn": 7.7,
-      "calibrationIntercept": 0.24956208591058932,
-      "calibrationSlope": 0.9688155308036831,
-      "marketBlendWeight": 1,
-      "reliableAssets": [
-        "ETH",
-        "XRP",
-        "HYPE"
-      ],
-      "assetStats": [
-        {
-          "asset": "BTC",
-          "seriesTicker": "KXBTC15M",
-          "sampleSize": 20,
-          "hitRate": 90,
-          "grossReturn": 13,
-          "netReturn": 11.4,
-          "averageNetProfitCents": 9.22,
-          "maxDrawdown": 8.1,
-          "profitable": true
-        },
-        {
-          "asset": "ETH",
-          "seriesTicker": "KXETH15M",
-          "sampleSize": 18,
-          "hitRate": 94.4,
-          "grossReturn": 15.9,
-          "netReturn": 14.4,
-          "averageNetProfitCents": 11.9,
-          "maxDrawdown": 5.8,
-          "profitable": true
-        },
-        {
-          "asset": "SOL",
-          "seriesTicker": "KXSOL15M",
-          "sampleSize": 28,
-          "hitRate": 92.9,
-          "grossReturn": 15.7,
-          "netReturn": 14.1,
-          "averageNetProfitCents": 11.47,
-          "maxDrawdown": 3.4,
-          "profitable": true
-        },
-        {
-          "asset": "XRP",
-          "seriesTicker": "KXXRP15M",
-          "sampleSize": 22,
-          "hitRate": 86.4,
-          "grossReturn": 5,
-          "netReturn": 3.7,
-          "averageNetProfitCents": 3.08,
-          "maxDrawdown": 8.1,
-          "profitable": true
-        },
-        {
-          "asset": "DOGE",
-          "seriesTicker": "KXDOGE15M",
-          "sampleSize": 29,
-          "hitRate": 89.7,
-          "grossReturn": 11,
-          "netReturn": 9.6,
-          "averageNetProfitCents": 7.82,
-          "maxDrawdown": 6.8,
-          "profitable": true
-        },
-        {
-          "asset": "BNB",
-          "seriesTicker": "KXBNB15M",
-          "sampleSize": 35,
-          "hitRate": 80,
-          "grossReturn": -2.7,
-          "netReturn": -3.9,
-          "averageNetProfitCents": -3.24,
-          "maxDrawdown": 14.1,
-          "profitable": false
-        },
-        {
-          "asset": "HYPE",
-          "seriesTicker": "KXHYPE15M",
-          "sampleSize": 37,
-          "hitRate": 89.2,
-          "grossReturn": 11,
-          "netReturn": 9.5,
-          "averageNetProfitCents": 7.77,
-          "maxDrawdown": 7.9,
-          "profitable": true
-        }
-      ],
-      "performance": [
-        {
-          "label": "Sep 12, 3 AM",
-          "cumulativeReturn": 1,
-          "hitRate": 83.3,
-          "trades": 24
-        },
-        {
-          "label": "Sep 12, 12 PM",
-          "cumulativeReturn": 1.2,
-          "hitRate": 83.3,
-          "trades": 48
-        },
-        {
-          "label": "Sep 12, 8 PM",
-          "cumulativeReturn": 5.1,
-          "hitRate": 85.9,
-          "trades": 71
-        },
-        {
-          "label": "Sep 13, 2 AM",
-          "cumulativeReturn": 8.4,
-          "hitRate": 88.4,
-          "trades": 95
-        },
-        {
-          "label": "Sep 13, 6 AM",
-          "cumulativeReturn": 2.9,
-          "hitRate": 84,
-          "trades": 119
-        },
-        {
-          "label": "Sep 13, 9 AM",
-          "cumulativeReturn": 4.2,
-          "hitRate": 85.2,
-          "trades": 142
-        },
-        {
-          "label": "Sep 13, 10 AM",
-          "cumulativeReturn": 6.5,
-          "hitRate": 87.3,
-          "trades": 166
-        },
-        {
-          "label": "Sep 13, 1 PM",
-          "cumulativeReturn": 7.7,
-          "hitRate": 88.4,
-          "trades": 189
-        }
-      ]
-    },
-    {
-      "targetSeconds": 600,
-      "evaluationMarkets": 1050,
-      "holdoutMarkets": 222,
-      "hitRate": 89.6,
-      "hitRateLowerBound": 84.9,
-      "baselineHitRate": 89.6,
-      "brierScore": 0.1892,
-      "marketBrierScore": 0.1892,
-      "brierSkillScore": 0,
-      "logLoss": 0.5587,
-      "expectedCalibrationError": 5.76,
-      "signalCoverage": 21.1,
-      "confidenceThreshold": 80,
-      "grossPaperReturn": 3.9,
-      "netPaperReturn": 3,
-      "calibrationIntercept": 0.36913280488954553,
-      "calibrationSlope": 1.2059634005296214,
+      "grossPaperReturn": 4.6,
+      "netPaperReturn": 2.5,
+      "calibrationIntercept": -0.057787392357093854,
+      "calibrationSlope": 1.1952416970979314,
       "marketBlendWeight": 1,
       "reliableAssets": [
         "SOL",
@@ -569,12 +262,475 @@
         {
           "asset": "BTC",
           "seriesTicker": "KXBTC15M",
+          "sampleSize": 17,
+          "hitRate": 76.5,
+          "grossReturn": 9.2,
+          "netReturn": 6.9,
+          "averageNetProfitCents": 4.95,
+          "maxDrawdown": 11.9,
+          "profitable": true
+        },
+        {
+          "asset": "ETH",
+          "seriesTicker": "KXETH15M",
           "sampleSize": 22,
-          "hitRate": 81.8,
-          "grossReturn": -3.9,
-          "netReturn": -4.9,
-          "averageNetProfitCents": -4.22,
-          "maxDrawdown": 15.5,
+          "hitRate": 68.2,
+          "grossReturn": -3.2,
+          "netReturn": -5.2,
+          "averageNetProfitCents": -3.72,
+          "maxDrawdown": 17.2,
+          "profitable": false
+        },
+        {
+          "asset": "SOL",
+          "seriesTicker": "KXSOL15M",
+          "sampleSize": 28,
+          "hitRate": 71.4,
+          "grossReturn": 1,
+          "netReturn": -1,
+          "averageNetProfitCents": -0.73,
+          "maxDrawdown": 10.6,
+          "profitable": false
+        },
+        {
+          "asset": "XRP",
+          "seriesTicker": "KXXRP15M",
+          "sampleSize": 29,
+          "hitRate": 82.8,
+          "grossReturn": 16,
+          "netReturn": 13.7,
+          "averageNetProfitCents": 10,
+          "maxDrawdown": 5.2,
+          "profitable": true
+        },
+        {
+          "asset": "DOGE",
+          "seriesTicker": "KXDOGE15M",
+          "sampleSize": 22,
+          "hitRate": 77.3,
+          "grossReturn": 9.7,
+          "netReturn": 7.5,
+          "averageNetProfitCents": 5.37,
+          "maxDrawdown": 7.3,
+          "profitable": true
+        },
+        {
+          "asset": "BNB",
+          "seriesTicker": "KXBNB15M",
+          "sampleSize": 27,
+          "hitRate": 63,
+          "grossReturn": -12.3,
+          "netReturn": -14,
+          "averageNetProfitCents": -10.22,
+          "maxDrawdown": 18,
+          "profitable": false
+        },
+        {
+          "asset": "HYPE",
+          "seriesTicker": "KXHYPE15M",
+          "sampleSize": 43,
+          "hitRate": 76.7,
+          "grossReturn": 9.8,
+          "netReturn": 7.5,
+          "averageNetProfitCents": 5.37,
+          "maxDrawdown": 8.6,
+          "profitable": true
+        }
+      ],
+      "performance": [
+        {
+          "label": "Sep 12, 9 AM",
+          "cumulativeReturn": -41.5,
+          "hitRate": 41.7,
+          "trades": 24
+        },
+        {
+          "label": "Sep 12, 5 PM",
+          "cumulativeReturn": -11,
+          "hitRate": 63.8,
+          "trades": 47
+        },
+        {
+          "label": "Sep 12, 10 PM",
+          "cumulativeReturn": -3.5,
+          "hitRate": 69,
+          "trades": 71
+        },
+        {
+          "label": "Sep 13, 2 AM",
+          "cumulativeReturn": 2,
+          "hitRate": 73.4,
+          "trades": 94
+        },
+        {
+          "label": "Sep 13, 6 AM",
+          "cumulativeReturn": 2.2,
+          "hitRate": 73.7,
+          "trades": 118
+        },
+        {
+          "label": "Sep 13, 9 AM",
+          "cumulativeReturn": -0.5,
+          "hitRate": 71.6,
+          "trades": 141
+        },
+        {
+          "label": "Sep 13, 11 AM",
+          "cumulativeReturn": 1,
+          "hitRate": 72.7,
+          "trades": 165
+        },
+        {
+          "label": "Sep 13, 3 PM",
+          "cumulativeReturn": 2.5,
+          "hitRate": 73.9,
+          "trades": 188
+        }
+      ]
+    },
+    {
+      "targetSeconds": 780,
+      "evaluationMarkets": 1050,
+      "holdoutMarkets": 380,
+      "hitRate": 79.2,
+      "hitRateLowerBound": 74.8,
+      "baselineHitRate": 79.2,
+      "brierScore": 0.2091,
+      "marketBrierScore": 0.2091,
+      "brierSkillScore": 0,
+      "logLoss": 0.6072,
+      "expectedCalibrationError": 5.9,
+      "signalCoverage": 36.2,
+      "confidenceThreshold": 65,
+      "grossPaperReturn": 8.2,
+      "netPaperReturn": 6.2,
+      "calibrationIntercept": -0.019195819006582546,
+      "calibrationSlope": 1.0029164509259543,
+      "marketBlendWeight": 1,
+      "reliableAssets": [
+        "DOGE",
+        "HYPE"
+      ],
+      "assetStats": [
+        {
+          "asset": "BTC",
+          "seriesTicker": "KXBTC15M",
+          "sampleSize": 39,
+          "hitRate": 76.9,
+          "grossReturn": 9.1,
+          "netReturn": 6.9,
+          "averageNetProfitCents": 4.99,
+          "maxDrawdown": 6.3,
+          "profitable": true
+        },
+        {
+          "asset": "ETH",
+          "seriesTicker": "KXETH15M",
+          "sampleSize": 44,
+          "hitRate": 79.5,
+          "grossReturn": 10.9,
+          "netReturn": 8.8,
+          "averageNetProfitCents": 6.44,
+          "maxDrawdown": 5.8,
+          "profitable": true
+        },
+        {
+          "asset": "SOL",
+          "seriesTicker": "KXSOL15M",
+          "sampleSize": 59,
+          "hitRate": 84.7,
+          "grossReturn": 15,
+          "netReturn": 13,
+          "averageNetProfitCents": 9.73,
+          "maxDrawdown": 3.4,
+          "profitable": true
+        },
+        {
+          "asset": "XRP",
+          "seriesTicker": "KXXRP15M",
+          "sampleSize": 60,
+          "hitRate": 90,
+          "grossReturn": 23.9,
+          "netReturn": 21.6,
+          "averageNetProfitCents": 16,
+          "maxDrawdown": 5.1,
+          "profitable": true
+        },
+        {
+          "asset": "DOGE",
+          "seriesTicker": "KXDOGE15M",
+          "sampleSize": 50,
+          "hitRate": 70,
+          "grossReturn": -5.8,
+          "netReturn": -7.4,
+          "averageNetProfitCents": -5.62,
+          "maxDrawdown": 10.4,
+          "profitable": false
+        },
+        {
+          "asset": "BNB",
+          "seriesTicker": "KXBNB15M",
+          "sampleSize": 59,
+          "hitRate": 72.9,
+          "grossReturn": -1.6,
+          "netReturn": -3.4,
+          "averageNetProfitCents": -2.54,
+          "maxDrawdown": 12.1,
+          "profitable": false
+        },
+        {
+          "asset": "HYPE",
+          "seriesTicker": "KXHYPE15M",
+          "sampleSize": 69,
+          "hitRate": 78.3,
+          "grossReturn": 5.3,
+          "netReturn": 3.5,
+          "averageNetProfitCents": 2.63,
+          "maxDrawdown": 6.5,
+          "profitable": true
+        }
+      ],
+      "performance": [
+        {
+          "label": "Sep 12, 7 AM",
+          "cumulativeReturn": -33.2,
+          "hitRate": 50,
+          "trades": 48
+        },
+        {
+          "label": "Sep 12, 2 PM",
+          "cumulativeReturn": -12.9,
+          "hitRate": 64.2,
+          "trades": 95
+        },
+        {
+          "label": "Sep 12, 7 PM",
+          "cumulativeReturn": -2.7,
+          "hitRate": 72,
+          "trades": 143
+        },
+        {
+          "label": "Sep 13, 1 AM",
+          "cumulativeReturn": -1.6,
+          "hitRate": 72.6,
+          "trades": 190
+        },
+        {
+          "label": "Sep 13, 6 AM",
+          "cumulativeReturn": 0.5,
+          "hitRate": 74.4,
+          "trades": 238
+        },
+        {
+          "label": "Sep 13, 9 AM",
+          "cumulativeReturn": 3,
+          "hitRate": 76.5,
+          "trades": 285
+        },
+        {
+          "label": "Sep 13, 1 PM",
+          "cumulativeReturn": 6,
+          "hitRate": 79,
+          "trades": 333
+        },
+        {
+          "label": "Sep 13, 4 PM",
+          "cumulativeReturn": 6.2,
+          "hitRate": 79.2,
+          "trades": 380
+        }
+      ]
+    },
+    {
+      "targetSeconds": 720,
+      "evaluationMarkets": 1050,
+      "holdoutMarkets": 192,
+      "hitRate": 87,
+      "hitRateLowerBound": 81.5,
+      "baselineHitRate": 87,
+      "brierScore": 0.2008,
+      "marketBrierScore": 0.2008,
+      "brierSkillScore": 0,
+      "logLoss": 0.5878,
+      "expectedCalibrationError": 4.36,
+      "signalCoverage": 18.3,
+      "confidenceThreshold": 75,
+      "grossPaperReturn": 7.2,
+      "netPaperReturn": 5.8,
+      "calibrationIntercept": 0.05629559398318974,
+      "calibrationSlope": 0.7873770972917982,
+      "marketBlendWeight": 1,
+      "reliableAssets": [
+        "ETH",
+        "XRP",
+        "HYPE"
+      ],
+      "assetStats": [
+        {
+          "asset": "BTC",
+          "seriesTicker": "KXBTC15M",
+          "sampleSize": 19,
+          "hitRate": 89.5,
+          "grossReturn": 12.4,
+          "netReturn": 10.9,
+          "averageNetProfitCents": 8.76,
+          "maxDrawdown": 8.5,
+          "profitable": true
+        },
+        {
+          "asset": "ETH",
+          "seriesTicker": "KXETH15M",
+          "sampleSize": 19,
+          "hitRate": 89.5,
+          "grossReturn": 10.7,
+          "netReturn": 9.3,
+          "averageNetProfitCents": 7.6,
+          "maxDrawdown": 5.6,
+          "profitable": true
+        },
+        {
+          "asset": "SOL",
+          "seriesTicker": "KXSOL15M",
+          "sampleSize": 28,
+          "hitRate": 92.9,
+          "grossReturn": 15.9,
+          "netReturn": 14.3,
+          "averageNetProfitCents": 11.61,
+          "maxDrawdown": 3.4,
+          "profitable": true
+        },
+        {
+          "asset": "XRP",
+          "seriesTicker": "KXXRP15M",
+          "sampleSize": 24,
+          "hitRate": 83.3,
+          "grossReturn": 0.8,
+          "netReturn": -0.4,
+          "averageNetProfitCents": -0.33,
+          "maxDrawdown": 7.4,
+          "profitable": false
+        },
+        {
+          "asset": "DOGE",
+          "seriesTicker": "KXDOGE15M",
+          "sampleSize": 32,
+          "hitRate": 87.5,
+          "grossReturn": 8.6,
+          "netReturn": 7.1,
+          "averageNetProfitCents": 5.82,
+          "maxDrawdown": 6.1,
+          "profitable": true
+        },
+        {
+          "asset": "BNB",
+          "seriesTicker": "KXBNB15M",
+          "sampleSize": 32,
+          "hitRate": 78.1,
+          "grossReturn": -5.3,
+          "netReturn": -6.4,
+          "averageNetProfitCents": -5.35,
+          "maxDrawdown": 12.8,
+          "profitable": false
+        },
+        {
+          "asset": "HYPE",
+          "seriesTicker": "KXHYPE15M",
+          "sampleSize": 38,
+          "hitRate": 89.5,
+          "grossReturn": 10.4,
+          "netReturn": 8.9,
+          "averageNetProfitCents": 7.33,
+          "maxDrawdown": 7.6,
+          "profitable": true
+        }
+      ],
+      "performance": [
+        {
+          "label": "Sep 12, 10 AM",
+          "cumulativeReturn": -8.9,
+          "hitRate": 75,
+          "trades": 24
+        },
+        {
+          "label": "Sep 12, 5 PM",
+          "cumulativeReturn": -0.7,
+          "hitRate": 81.3,
+          "trades": 48
+        },
+        {
+          "label": "Sep 13, 1 AM",
+          "cumulativeReturn": 5.7,
+          "hitRate": 86.1,
+          "trades": 72
+        },
+        {
+          "label": "Sep 13, 6 AM",
+          "cumulativeReturn": 1.9,
+          "hitRate": 83.3,
+          "trades": 96
+        },
+        {
+          "label": "Sep 13, 8 AM",
+          "cumulativeReturn": 2.1,
+          "hitRate": 83.3,
+          "trades": 120
+        },
+        {
+          "label": "Sep 13, 10 AM",
+          "cumulativeReturn": 4.9,
+          "hitRate": 86.1,
+          "trades": 144
+        },
+        {
+          "label": "Sep 13, 12 PM",
+          "cumulativeReturn": 6.6,
+          "hitRate": 87.5,
+          "trades": 168
+        },
+        {
+          "label": "Sep 13, 4 PM",
+          "cumulativeReturn": 5.8,
+          "hitRate": 87,
+          "trades": 192
+        }
+      ]
+    },
+    {
+      "targetSeconds": 600,
+      "evaluationMarkets": 1050,
+      "holdoutMarkets": 230,
+      "hitRate": 89.6,
+      "hitRateLowerBound": 84.9,
+      "baselineHitRate": 89.6,
+      "brierScore": 0.1896,
+      "marketBrierScore": 0.1896,
+      "brierSkillScore": 0,
+      "logLoss": 0.5597,
+      "expectedCalibrationError": 4.24,
+      "signalCoverage": 21.9,
+      "confidenceThreshold": 80,
+      "grossPaperReturn": 3.7,
+      "netPaperReturn": 2.8,
+      "calibrationIntercept": 0.11181425100342333,
+      "calibrationSlope": 1.0249508416056297,
+      "marketBlendWeight": 1,
+      "reliableAssets": [
+        "SOL",
+        "XRP",
+        "DOGE",
+        "BNB",
+        "HYPE"
+      ],
+      "assetStats": [
+        {
+          "asset": "BTC",
+          "seriesTicker": "KXBTC15M",
+          "sampleSize": 23,
+          "hitRate": 82.6,
+          "grossReturn": -2.8,
+          "netReturn": -3.8,
+          "averageNetProfitCents": -3.3,
+          "maxDrawdown": 14.9,
           "profitable": false
         },
         {
@@ -582,10 +738,10 @@
           "seriesTicker": "KXETH15M",
           "sampleSize": 26,
           "hitRate": 84.6,
-          "grossReturn": -2,
-          "netReturn": -2.9,
-          "averageNetProfitCents": -2.56,
-          "maxDrawdown": 12.3,
+          "grossReturn": -2.3,
+          "netReturn": -3.2,
+          "averageNetProfitCents": -2.78,
+          "maxDrawdown": 12.2,
           "profitable": false
         },
         {
@@ -593,126 +749,126 @@
           "seriesTicker": "KXSOL15M",
           "sampleSize": 30,
           "hitRate": 96.7,
-          "grossReturn": 13.1,
-          "netReturn": 11.9,
-          "averageNetProfitCents": 10.31,
+          "grossReturn": 12.8,
+          "netReturn": 11.7,
+          "averageNetProfitCents": 10.09,
           "maxDrawdown": 3.2,
           "profitable": true
         },
         {
           "asset": "XRP",
           "seriesTicker": "KXXRP15M",
-          "sampleSize": 32,
-          "hitRate": 90.6,
-          "grossReturn": 5.1,
-          "netReturn": 4.2,
-          "averageNetProfitCents": 3.62,
-          "maxDrawdown": 5.6,
+          "sampleSize": 33,
+          "hitRate": 90.9,
+          "grossReturn": 5.6,
+          "netReturn": 4.6,
+          "averageNetProfitCents": 4.02,
+          "maxDrawdown": 5.4,
           "profitable": true
         },
         {
           "asset": "DOGE",
           "seriesTicker": "KXDOGE15M",
-          "sampleSize": 33,
-          "hitRate": 90.9,
-          "grossReturn": 4.6,
-          "netReturn": 3.7,
-          "averageNetProfitCents": 3.2,
-          "maxDrawdown": 5.4,
+          "sampleSize": 35,
+          "hitRate": 91.4,
+          "grossReturn": 5.1,
+          "netReturn": 4.1,
+          "averageNetProfitCents": 3.62,
+          "maxDrawdown": 5.1,
           "profitable": true
         },
         {
           "asset": "BNB",
           "seriesTicker": "KXBNB15M",
-          "sampleSize": 33,
-          "hitRate": 84.8,
-          "grossReturn": -2.2,
-          "netReturn": -3.1,
-          "averageNetProfitCents": -2.71,
-          "maxDrawdown": 5.8,
+          "sampleSize": 35,
+          "hitRate": 82.9,
+          "grossReturn": -4.5,
+          "netReturn": -5.4,
+          "averageNetProfitCents": -4.73,
+          "maxDrawdown": 8.2,
           "profitable": false
         },
         {
           "asset": "HYPE",
           "seriesTicker": "KXHYPE15M",
-          "sampleSize": 46,
-          "hitRate": 93.5,
-          "grossReturn": 8.2,
-          "netReturn": 7.2,
-          "averageNetProfitCents": 6.28,
-          "maxDrawdown": 2.2,
+          "sampleSize": 48,
+          "hitRate": 93.8,
+          "grossReturn": 8.3,
+          "netReturn": 7.3,
+          "averageNetProfitCents": 6.4,
+          "maxDrawdown": 2.1,
           "profitable": true
         }
       ],
       "performance": [
         {
-          "label": "Sep 12, 6 AM",
-          "cumulativeReturn": 3.5,
-          "hitRate": 89.3,
-          "trades": 28
+          "label": "Sep 12, 12 PM",
+          "cumulativeReturn": 4.3,
+          "hitRate": 89.7,
+          "trades": 29
         },
         {
-          "label": "Sep 12, 3 PM",
-          "cumulativeReturn": 10.3,
-          "hitRate": 94.6,
-          "trades": 56
+          "label": "Sep 12, 8 PM",
+          "cumulativeReturn": 0.4,
+          "hitRate": 86.2,
+          "trades": 58
         },
         {
-          "label": "Sep 13, 12 AM",
-          "cumulativeReturn": 2.7,
-          "hitRate": 88.1,
-          "trades": 84
+          "label": "Sep 13, 2 AM",
+          "cumulativeReturn": 3.1,
+          "hitRate": 88.5,
+          "trades": 87
         },
         {
-          "label": "Sep 13, 3 AM",
-          "cumulativeReturn": 3.8,
-          "hitRate": 89.2,
-          "trades": 111
-        },
-        {
-          "label": "Sep 13, 6 AM",
-          "cumulativeReturn": -0.9,
-          "hitRate": 85.6,
-          "trades": 139
-        },
-        {
-          "label": "Sep 13, 9 AM",
-          "cumulativeReturn": 0.7,
-          "hitRate": 87.4,
-          "trades": 167
-        },
-        {
-          "label": "Sep 13, 11 AM",
-          "cumulativeReturn": 2.5,
-          "hitRate": 89.2,
-          "trades": 195
-        },
-        {
-          "label": "Sep 13, 1 PM",
-          "cumulativeReturn": 3,
+          "label": "Sep 13, 4 AM",
+          "cumulativeReturn": 3.7,
           "hitRate": 89.6,
-          "trades": 222
+          "trades": 115
+        },
+        {
+          "label": "Sep 13, 8 AM",
+          "cumulativeReturn": -1.2,
+          "hitRate": 85.4,
+          "trades": 144
+        },
+        {
+          "label": "Sep 13, 10 AM",
+          "cumulativeReturn": 0.9,
+          "hitRate": 87.9,
+          "trades": 173
+        },
+        {
+          "label": "Sep 13, 12 PM",
+          "cumulativeReturn": 1.8,
+          "hitRate": 88.6,
+          "trades": 202
+        },
+        {
+          "label": "Sep 13, 4 PM",
+          "cumulativeReturn": 2.8,
+          "hitRate": 89.6,
+          "trades": 230
         }
       ]
     },
     {
       "targetSeconds": 480,
       "evaluationMarkets": 1050,
-      "holdoutMarkets": 134,
-      "hitRate": 96.3,
-      "hitRateLowerBound": 91.6,
-      "baselineHitRate": 96.3,
-      "brierScore": 0.1681,
-      "marketBrierScore": 0.1681,
+      "holdoutMarkets": 143,
+      "hitRate": 95.8,
+      "hitRateLowerBound": 91.1,
+      "baselineHitRate": 95.8,
+      "brierScore": 0.1683,
+      "marketBrierScore": 0.1683,
       "brierSkillScore": 0,
-      "logLoss": 0.5058,
-      "expectedCalibrationError": 2.48,
-      "signalCoverage": 12.8,
+      "logLoss": 0.5066,
+      "expectedCalibrationError": 2.21,
+      "signalCoverage": 13.6,
       "confidenceThreshold": 90,
-      "grossPaperReturn": 3.3,
-      "netPaperReturn": 2.8,
-      "calibrationIntercept": 0.21821184113915254,
-      "calibrationSlope": 1.2039718744824701,
+      "grossPaperReturn": 2.7,
+      "netPaperReturn": 2.3,
+      "calibrationIntercept": 0.025028641026219718,
+      "calibrationSlope": 1.2139856960640076,
       "marketBlendWeight": 1,
       "reliableAssets": [
         "ETH",
@@ -739,8 +895,8 @@
           "sampleSize": 15,
           "hitRate": 100,
           "grossReturn": 7.6,
-          "netReturn": 7.1,
-          "averageNetProfitCents": 6.62,
+          "netReturn": 7,
+          "averageNetProfitCents": 6.57,
           "maxDrawdown": 0,
           "profitable": true
         },
@@ -758,117 +914,117 @@
         {
           "asset": "XRP",
           "seriesTicker": "KXXRP15M",
-          "sampleSize": 22,
+          "sampleSize": 23,
           "hitRate": 100,
-          "grossReturn": 7.5,
-          "netReturn": 7,
-          "averageNetProfitCents": 6.55,
+          "grossReturn": 7.4,
+          "netReturn": 6.9,
+          "averageNetProfitCents": 6.46,
           "maxDrawdown": 0,
           "profitable": true
         },
         {
           "asset": "DOGE",
           "seriesTicker": "KXDOGE15M",
-          "sampleSize": 22,
+          "sampleSize": 24,
           "hitRate": 100,
-          "grossReturn": 7.2,
-          "netReturn": 6.7,
-          "averageNetProfitCents": 6.32,
+          "grossReturn": 7.3,
+          "netReturn": 6.8,
+          "averageNetProfitCents": 6.39,
           "maxDrawdown": 0,
           "profitable": true
         },
         {
           "asset": "BNB",
           "seriesTicker": "KXBNB15M",
-          "sampleSize": 22,
-          "hitRate": 90.9,
-          "grossReturn": -2.6,
-          "netReturn": -3,
-          "averageNetProfitCents": -2.84,
-          "maxDrawdown": 7.4,
+          "sampleSize": 25,
+          "hitRate": 88,
+          "grossReturn": -5.6,
+          "netReturn": -6.1,
+          "averageNetProfitCents": -5.69,
+          "maxDrawdown": 7.3,
           "profitable": false
         },
         {
           "asset": "HYPE",
           "seriesTicker": "KXHYPE15M",
-          "sampleSize": 19,
-          "hitRate": 94.7,
-          "grossReturn": 0.2,
-          "netReturn": -0.2,
-          "averageNetProfitCents": -0.17,
-          "maxDrawdown": 5.1,
-          "profitable": false
+          "sampleSize": 22,
+          "hitRate": 95.5,
+          "grossReturn": 1,
+          "netReturn": 0.6,
+          "averageNetProfitCents": 0.6,
+          "maxDrawdown": 4.4,
+          "profitable": true
         }
       ],
       "performance": [
         {
-          "label": "Sep 12, 12 PM",
-          "cumulativeReturn": 7.8,
+          "label": "Sep 12, 2 PM",
+          "cumulativeReturn": 7.9,
           "hitRate": 100,
-          "trades": 17
+          "trades": 18
         },
         {
-          "label": "Sep 12, 9 PM",
-          "cumulativeReturn": 4.3,
-          "hitRate": 97.1,
-          "trades": 34
+          "label": "Sep 12, 11 PM",
+          "cumulativeReturn": -1.5,
+          "hitRate": 91.7,
+          "trades": 36
         },
         {
-          "label": "Sep 13, 2 AM",
-          "cumulativeReturn": 1,
-          "hitRate": 94.1,
-          "trades": 51
+          "label": "Sep 13, 3 AM",
+          "cumulativeReturn": 1.2,
+          "hitRate": 94.4,
+          "trades": 54
         },
         {
-          "label": "Sep 13, 4 AM",
-          "cumulativeReturn": 2.3,
-          "hitRate": 95.5,
-          "trades": 67
+          "label": "Sep 13, 6 AM",
+          "cumulativeReturn": -0.2,
+          "hitRate": 93.1,
+          "trades": 72
         },
         {
           "label": "Sep 13, 8 AM",
-          "cumulativeReturn": 0.8,
-          "hitRate": 94,
-          "trades": 84
-        },
-        {
-          "label": "Sep 13, 9 AM",
-          "cumulativeReturn": 1.5,
-          "hitRate": 95,
-          "trades": 101
+          "cumulativeReturn": 1.1,
+          "hitRate": 94.4,
+          "trades": 90
         },
         {
           "label": "Sep 13, 10 AM",
-          "cumulativeReturn": 2.3,
-          "hitRate": 95.8,
-          "trades": 118
+          "cumulativeReturn": 2,
+          "hitRate": 95.4,
+          "trades": 108
         },
         {
-          "label": "Sep 13, 1 PM",
-          "cumulativeReturn": 2.8,
-          "hitRate": 96.3,
-          "trades": 134
+          "label": "Sep 13, 12 PM",
+          "cumulativeReturn": 2.5,
+          "hitRate": 96,
+          "trades": 126
+        },
+        {
+          "label": "Sep 13, 3 PM",
+          "cumulativeReturn": 2.3,
+          "hitRate": 95.8,
+          "trades": 143
         }
       ]
     },
     {
       "targetSeconds": 360,
       "evaluationMarkets": 1050,
-      "holdoutMarkets": 285,
+      "holdoutMarkets": 286,
       "hitRate": 95.1,
-      "hitRateLowerBound": 91.9,
+      "hitRateLowerBound": 92,
       "baselineHitRate": 95.1,
-      "brierScore": 0.1478,
-      "marketBrierScore": 0.1478,
+      "brierScore": 0.1494,
+      "marketBrierScore": 0.1494,
       "brierSkillScore": 0,
-      "logLoss": 0.4547,
-      "expectedCalibrationError": 4.99,
-      "signalCoverage": 27.1,
+      "logLoss": 0.4578,
+      "expectedCalibrationError": 4.59,
+      "signalCoverage": 27.2,
       "confidenceThreshold": 90,
       "grossPaperReturn": 0.8,
       "netPaperReturn": 0.4,
-      "calibrationIntercept": 0.21777314868260028,
-      "calibrationSlope": 1.1322588783960597,
+      "calibrationIntercept": -0.028050949003508865,
+      "calibrationSlope": 1.109568062553857,
       "marketBlendWeight": 1,
       "reliableAssets": [
         "BTC",
@@ -880,12 +1036,12 @@
         {
           "asset": "BTC",
           "seriesTicker": "KXBTC15M",
-          "sampleSize": 31,
-          "hitRate": 93.5,
-          "grossReturn": -0.3,
-          "netReturn": -0.7,
-          "averageNetProfitCents": -0.65,
-          "maxDrawdown": 6.3,
+          "sampleSize": 30,
+          "hitRate": 93.3,
+          "grossReturn": -0.5,
+          "netReturn": -0.9,
+          "averageNetProfitCents": -0.88,
+          "maxDrawdown": 6.5,
           "profitable": false
         },
         {
@@ -894,31 +1050,31 @@
           "sampleSize": 40,
           "hitRate": 97.5,
           "grossReturn": 3.8,
-          "netReturn": 3.3,
-          "averageNetProfitCents": 3.15,
+          "netReturn": 3.4,
+          "averageNetProfitCents": 3.19,
           "maxDrawdown": 2.5,
           "profitable": true
         },
         {
           "asset": "SOL",
           "seriesTicker": "KXSOL15M",
-          "sampleSize": 36,
-          "hitRate": 94.4,
-          "grossReturn": 0.1,
-          "netReturn": -0.3,
-          "averageNetProfitCents": -0.28,
-          "maxDrawdown": 2.8,
-          "profitable": false
+          "sampleSize": 39,
+          "hitRate": 94.9,
+          "grossReturn": 0.6,
+          "netReturn": 0.2,
+          "averageNetProfitCents": 0.23,
+          "maxDrawdown": 2.6,
+          "profitable": true
         },
         {
           "asset": "XRP",
           "seriesTicker": "KXXRP15M",
-          "sampleSize": 39,
-          "hitRate": 92.3,
-          "grossReturn": -1.6,
-          "netReturn": -2.1,
-          "averageNetProfitCents": -1.94,
-          "maxDrawdown": 7,
+          "sampleSize": 38,
+          "hitRate": 92.1,
+          "grossReturn": -2,
+          "netReturn": -2.4,
+          "averageNetProfitCents": -2.29,
+          "maxDrawdown": 7.2,
           "profitable": false
         },
         {
@@ -928,102 +1084,102 @@
           "hitRate": 97.9,
           "grossReturn": 3.7,
           "netReturn": 3.3,
-          "averageNetProfitCents": 3.13,
+          "averageNetProfitCents": 3.11,
           "maxDrawdown": 2.1,
           "profitable": true
         },
         {
           "asset": "BNB",
           "seriesTicker": "KXBNB15M",
-          "sampleSize": 45,
-          "hitRate": 95.6,
-          "grossReturn": 1.4,
-          "netReturn": 1,
-          "averageNetProfitCents": 0.98,
-          "maxDrawdown": 3.1,
+          "sampleSize": 42,
+          "hitRate": 95.2,
+          "grossReturn": 1,
+          "netReturn": 0.6,
+          "averageNetProfitCents": 0.56,
+          "maxDrawdown": 3.3,
           "profitable": true
         },
         {
           "asset": "HYPE",
           "seriesTicker": "KXHYPE15M",
-          "sampleSize": 47,
-          "hitRate": 93.6,
-          "grossReturn": -1.9,
-          "netReturn": -2.2,
-          "averageNetProfitCents": -2.08,
-          "maxDrawdown": 4.8,
+          "sampleSize": 50,
+          "hitRate": 94,
+          "grossReturn": -1.4,
+          "netReturn": -1.7,
+          "averageNetProfitCents": -1.65,
+          "maxDrawdown": 4.5,
           "profitable": false
         }
       ],
       "performance": [
         {
-          "label": "Sep 12, 6 AM",
-          "cumulativeReturn": 6.7,
-          "hitRate": 100,
+          "label": "Sep 12, 10 AM",
+          "cumulativeReturn": 3.6,
+          "hitRate": 97.2,
           "trades": 36
         },
         {
-          "label": "Sep 12, 12 PM",
-          "cumulativeReturn": -1,
+          "label": "Sep 12, 3 PM",
+          "cumulativeReturn": -1.1,
           "hitRate": 93.1,
           "trades": 72
         },
         {
-          "label": "Sep 12, 4 PM",
-          "cumulativeReturn": 0.3,
-          "hitRate": 94.4,
-          "trades": 107
+          "label": "Sep 12, 8 PM",
+          "cumulativeReturn": -3.5,
+          "hitRate": 90.7,
+          "trades": 108
         },
         {
-          "label": "Sep 13, 12 AM",
-          "cumulativeReturn": -2.4,
+          "label": "Sep 13, 2 AM",
+          "cumulativeReturn": -2.7,
           "hitRate": 91.6,
           "trades": 143
         },
         {
-          "label": "Sep 13, 3 AM",
-          "cumulativeReturn": -1.5,
-          "hitRate": 92.7,
+          "label": "Sep 13, 6 AM",
+          "cumulativeReturn": -2.2,
+          "hitRate": 92.2,
           "trades": 179
         },
         {
-          "label": "Sep 13, 7 AM",
-          "cumulativeReturn": -0.8,
-          "hitRate": 93.5,
-          "trades": 214
-        },
-        {
           "label": "Sep 13, 9 AM",
-          "cumulativeReturn": -0.2,
-          "hitRate": 94.4,
-          "trades": 250
+          "cumulativeReturn": -1.1,
+          "hitRate": 93.5,
+          "trades": 215
         },
         {
-          "label": "Sep 13, 1 PM",
+          "label": "Sep 13, 11 AM",
+          "cumulativeReturn": -0.3,
+          "hitRate": 94.4,
+          "trades": 251
+        },
+        {
+          "label": "Sep 13, 4 PM",
           "cumulativeReturn": 0.4,
           "hitRate": 95.1,
-          "trades": 285
+          "trades": 286
         }
       ]
     },
     {
       "targetSeconds": 240,
       "evaluationMarkets": 1050,
-      "holdoutMarkets": 448,
-      "hitRate": 97.3,
-      "hitRateLowerBound": 95.4,
-      "baselineHitRate": 97.3,
-      "brierScore": 0.1174,
-      "marketBrierScore": 0.1174,
+      "holdoutMarkets": 441,
+      "hitRate": 97.1,
+      "hitRateLowerBound": 95,
+      "baselineHitRate": 97.1,
+      "brierScore": 0.1195,
+      "marketBrierScore": 0.1195,
       "brierSkillScore": 0,
-      "logLoss": 0.3672,
-      "expectedCalibrationError": 2.93,
-      "signalCoverage": 42.7,
+      "logLoss": 0.3725,
+      "expectedCalibrationError": 3.05,
+      "signalCoverage": 42,
       "confidenceThreshold": 90,
-      "grossPaperReturn": 2,
-      "netPaperReturn": 1.6,
-      "calibrationIntercept": 0.26859027275458747,
-      "calibrationSlope": 1.1489486859089733,
+      "grossPaperReturn": 1.6,
+      "netPaperReturn": 1.3,
+      "calibrationIntercept": -0.0613814955098159,
+      "calibrationSlope": 1.1084893697518798,
       "marketBlendWeight": 1,
       "reliableAssets": [
         "BTC",
@@ -1036,11 +1192,11 @@
         {
           "asset": "BTC",
           "seriesTicker": "KXBTC15M",
-          "sampleSize": 54,
-          "hitRate": 94.4,
-          "grossReturn": -0.1,
-          "netReturn": -0.5,
-          "averageNetProfitCents": -0.45,
+          "sampleSize": 55,
+          "hitRate": 94.5,
+          "grossReturn": 0.2,
+          "netReturn": -0.2,
+          "averageNetProfitCents": -0.17,
           "maxDrawdown": 4.3,
           "profitable": false
         },
@@ -1051,29 +1207,29 @@
           "hitRate": 95.4,
           "grossReturn": -0.1,
           "netReturn": -0.4,
-          "averageNetProfitCents": -0.35,
+          "averageNetProfitCents": -0.42,
           "maxDrawdown": 3.3,
           "profitable": false
         },
         {
           "asset": "SOL",
           "seriesTicker": "KXSOL15M",
-          "sampleSize": 65,
+          "sampleSize": 64,
           "hitRate": 96.9,
-          "grossReturn": 1.6,
-          "netReturn": 1.3,
-          "averageNetProfitCents": 1.23,
+          "grossReturn": 1.2,
+          "netReturn": 0.9,
+          "averageNetProfitCents": 0.9,
           "maxDrawdown": 1.5,
           "profitable": true
         },
         {
           "asset": "XRP",
           "seriesTicker": "KXXRP15M",
-          "sampleSize": 60,
+          "sampleSize": 57,
           "hitRate": 100,
-          "grossReturn": 5.3,
-          "netReturn": 4.9,
-          "averageNetProfitCents": 4.7,
+          "grossReturn": 5.1,
+          "netReturn": 4.7,
+          "averageNetProfitCents": 4.52,
           "maxDrawdown": 0,
           "profitable": true
         },
@@ -1082,104 +1238,104 @@
           "seriesTicker": "KXDOGE15M",
           "sampleSize": 65,
           "hitRate": 96.9,
-          "grossReturn": 1.8,
+          "grossReturn": 1.9,
           "netReturn": 1.5,
-          "averageNetProfitCents": 1.39,
+          "averageNetProfitCents": 1.45,
           "maxDrawdown": 2,
           "profitable": true
         },
         {
           "asset": "BNB",
           "seriesTicker": "KXBNB15M",
-          "sampleSize": 65,
-          "hitRate": 98.5,
-          "grossReturn": 2.4,
-          "netReturn": 2.2,
-          "averageNetProfitCents": 2.08,
+          "sampleSize": 63,
+          "hitRate": 96.8,
+          "grossReturn": 0.8,
+          "netReturn": 0.5,
+          "averageNetProfitCents": 0.52,
           "maxDrawdown": 1.5,
           "profitable": true
         },
         {
           "asset": "HYPE",
           "seriesTicker": "KXHYPE15M",
-          "sampleSize": 74,
+          "sampleSize": 72,
           "hitRate": 98.6,
           "grossReturn": 2.5,
-          "netReturn": 2.3,
-          "averageNetProfitCents": 2.2,
+          "netReturn": 2.2,
+          "averageNetProfitCents": 2.15,
           "maxDrawdown": 1.4,
           "profitable": true
         }
       ],
       "performance": [
         {
-          "label": "Sep 12, 5 AM",
-          "cumulativeReturn": 1.7,
-          "hitRate": 96.4,
+          "label": "Sep 12, 9 AM",
+          "cumulativeReturn": 0.2,
+          "hitRate": 94.6,
           "trades": 56
         },
         {
-          "label": "Sep 12, 11 AM",
-          "cumulativeReturn": 2.6,
-          "hitRate": 97.3,
-          "trades": 112
+          "label": "Sep 12, 2 PM",
+          "cumulativeReturn": -0.2,
+          "hitRate": 94.6,
+          "trades": 111
         },
         {
-          "label": "Sep 12, 4 PM",
-          "cumulativeReturn": 1.5,
-          "hitRate": 96.4,
-          "trades": 168
+          "label": "Sep 12, 8 PM",
+          "cumulativeReturn": 0.3,
+          "hitRate": 95.2,
+          "trades": 166
         },
         {
-          "label": "Sep 12, 9 PM",
+          "label": "Sep 13, 1 AM",
           "cumulativeReturn": 0.1,
-          "hitRate": 95.1,
-          "trades": 224
+          "hitRate": 95,
+          "trades": 221
         },
         {
-          "label": "Sep 13, 2 AM",
-          "cumulativeReturn": 0.9,
-          "hitRate": 96.1,
-          "trades": 280
+          "label": "Sep 13, 4 AM",
+          "cumulativeReturn": 0.8,
+          "hitRate": 96,
+          "trades": 276
         },
         {
-          "label": "Sep 13, 6 AM",
-          "cumulativeReturn": 1.5,
+          "label": "Sep 13, 8 AM",
+          "cumulativeReturn": 1.2,
           "hitRate": 96.7,
-          "trades": 336
+          "trades": 331
         },
         {
-          "label": "Sep 13, 9 AM",
-          "cumulativeReturn": 1.6,
-          "hitRate": 97.2,
-          "trades": 392
+          "label": "Sep 13, 12 PM",
+          "cumulativeReturn": 1.1,
+          "hitRate": 96.9,
+          "trades": 386
         },
         {
-          "label": "Sep 13, 1 PM",
-          "cumulativeReturn": 1.6,
-          "hitRate": 97.3,
-          "trades": 448
+          "label": "Sep 13, 4 PM",
+          "cumulativeReturn": 1.3,
+          "hitRate": 97.1,
+          "trades": 441
         }
       ]
     },
     {
       "targetSeconds": 120,
       "evaluationMarkets": 1050,
-      "holdoutMarkets": 667,
+      "holdoutMarkets": 665,
       "hitRate": 97.6,
       "hitRateLowerBound": 96.1,
       "baselineHitRate": 97.6,
-      "brierScore": 0.0899,
-      "marketBrierScore": 0.0899,
+      "brierScore": 0.0905,
+      "marketBrierScore": 0.0905,
       "brierSkillScore": -0.01,
-      "logLoss": 0.2861,
-      "expectedCalibrationError": 3.26,
-      "signalCoverage": 63.5,
+      "logLoss": 0.2881,
+      "expectedCalibrationError": 3.15,
+      "signalCoverage": 63.3,
       "confidenceThreshold": 90,
-      "grossPaperReturn": 0.3,
-      "netPaperReturn": 0.1,
-      "calibrationIntercept": 0.2856967455362701,
-      "calibrationSlope": 1.1441889559183225,
+      "grossPaperReturn": 0.4,
+      "netPaperReturn": 0.2,
+      "calibrationIntercept": 0.1289280527962745,
+      "calibrationSlope": 1.1004611936341622,
       "marketBlendWeight": 1,
       "reliableAssets": [
         "BTC",
@@ -1193,19 +1349,19 @@
           "sampleSize": 89,
           "hitRate": 96.6,
           "grossReturn": -0.2,
-          "netReturn": -0.4,
-          "averageNetProfitCents": -0.41,
+          "netReturn": -0.5,
+          "averageNetProfitCents": -0.45,
           "maxDrawdown": 2.4,
           "profitable": false
         },
         {
           "asset": "ETH",
           "seriesTicker": "KXETH15M",
-          "sampleSize": 94,
+          "sampleSize": 95,
           "hitRate": 97.9,
           "grossReturn": 0.6,
-          "netReturn": 0.4,
-          "averageNetProfitCents": 0.37,
+          "netReturn": 0.5,
+          "averageNetProfitCents": 0.45,
           "maxDrawdown": 1.8,
           "profitable": true
         },
@@ -1214,42 +1370,42 @@
           "seriesTicker": "KXSOL15M",
           "sampleSize": 93,
           "hitRate": 95.7,
-          "grossReturn": -1.4,
-          "netReturn": -1.6,
-          "averageNetProfitCents": -1.53,
+          "grossReturn": -1.3,
+          "netReturn": -1.5,
+          "averageNetProfitCents": -1.47,
           "maxDrawdown": 3.1,
           "profitable": false
         },
         {
           "asset": "XRP",
           "seriesTicker": "KXXRP15M",
-          "sampleSize": 108,
+          "sampleSize": 105,
           "hitRate": 98.1,
-          "grossReturn": 1.4,
-          "netReturn": 1.1,
-          "averageNetProfitCents": 1.1,
+          "grossReturn": 1.3,
+          "netReturn": 1,
+          "averageNetProfitCents": 1.02,
           "maxDrawdown": 0.9,
           "profitable": true
         },
         {
           "asset": "DOGE",
           "seriesTicker": "KXDOGE15M",
-          "sampleSize": 87,
-          "hitRate": 96.6,
-          "grossReturn": -0.8,
-          "netReturn": -1,
-          "averageNetProfitCents": -0.99,
-          "maxDrawdown": 2.2,
+          "sampleSize": 90,
+          "hitRate": 96.7,
+          "grossReturn": -0.7,
+          "netReturn": -0.9,
+          "averageNetProfitCents": -0.84,
+          "maxDrawdown": 2.1,
           "profitable": false
         },
         {
           "asset": "BNB",
           "seriesTicker": "KXBNB15M",
-          "sampleSize": 97,
+          "sampleSize": 94,
           "hitRate": 97.9,
-          "grossReturn": 0.4,
-          "netReturn": 0.2,
-          "averageNetProfitCents": 0.24,
+          "grossReturn": 0.5,
+          "netReturn": 0.3,
+          "averageNetProfitCents": 0.29,
           "maxDrawdown": 1.3,
           "profitable": true
         },
@@ -1258,82 +1414,82 @@
           "seriesTicker": "KXHYPE15M",
           "sampleSize": 99,
           "hitRate": 100,
-          "grossReturn": 2,
-          "netReturn": 1.9,
-          "averageNetProfitCents": 1.84,
+          "grossReturn": 2.1,
+          "netReturn": 2,
+          "averageNetProfitCents": 1.91,
           "maxDrawdown": 0,
           "profitable": true
         }
       ],
       "performance": [
         {
-          "label": "Sep 12, 4 AM",
-          "cumulativeReturn": -2.2,
-          "hitRate": 95.2,
+          "label": "Sep 12, 8 AM",
+          "cumulativeReturn": -3.1,
+          "hitRate": 94,
           "trades": 84
         },
         {
-          "label": "Sep 12, 10 AM",
-          "cumulativeReturn": 0,
-          "hitRate": 97,
+          "label": "Sep 12, 1 PM",
+          "cumulativeReturn": -1.1,
+          "hitRate": 95.8,
           "trades": 167
         },
         {
-          "label": "Sep 12, 3 PM",
-          "cumulativeReturn": 0.1,
-          "hitRate": 97.2,
-          "trades": 251
+          "label": "Sep 12, 6 PM",
+          "cumulativeReturn": -1.8,
+          "hitRate": 95.2,
+          "trades": 250
         },
         {
-          "label": "Sep 12, 8 PM",
+          "label": "Sep 12, 11 PM",
+          "cumulativeReturn": -1.4,
+          "hitRate": 95.5,
+          "trades": 333
+        },
+        {
+          "label": "Sep 13, 3 AM",
           "cumulativeReturn": -0.9,
-          "hitRate": 96.1,
-          "trades": 334
+          "hitRate": 96.2,
+          "trades": 416
         },
         {
-          "label": "Sep 13, 1 AM",
-          "cumulativeReturn": -0.6,
-          "hitRate": 96.4,
-          "trades": 417
-        },
-        {
-          "label": "Sep 13, 5 AM",
+          "label": "Sep 13, 8 AM",
           "cumulativeReturn": -0.4,
           "hitRate": 96.8,
-          "trades": 501
+          "trades": 499
         },
         {
-          "label": "Sep 13, 9 AM",
-          "cumulativeReturn": -0.1,
+          "label": "Sep 13, 12 PM",
+          "cumulativeReturn": -0.2,
           "hitRate": 97.3,
-          "trades": 584
+          "trades": 582
         },
         {
-          "label": "Sep 13, 1 PM",
-          "cumulativeReturn": 0.1,
+          "label": "Sep 13, 4 PM",
+          "cumulativeReturn": 0.2,
           "hitRate": 97.6,
-          "trades": 667
+          "trades": 665
         }
       ]
     },
     {
       "targetSeconds": 60,
       "evaluationMarkets": 1050,
-      "holdoutMarkets": 821,
+      "holdoutMarkets": 819,
       "hitRate": 98.7,
       "hitRateLowerBound": 97.6,
       "baselineHitRate": 98.7,
-      "brierScore": 0.0513,
-      "marketBrierScore": 0.0513,
+      "brierScore": 0.0532,
+      "marketBrierScore": 0.0532,
       "brierSkillScore": -0.05,
-      "logLoss": 0.175,
-      "expectedCalibrationError": 2.12,
-      "signalCoverage": 78.2,
+      "logLoss": 0.1794,
+      "expectedCalibrationError": 1.96,
+      "signalCoverage": 78,
       "confidenceThreshold": 90,
       "grossPaperReturn": 0.2,
       "netPaperReturn": 0.1,
-      "calibrationIntercept": 0.3443683288877781,
-      "calibrationSlope": 1.312717756212719,
+      "calibrationIntercept": 0.44216811718403465,
+      "calibrationSlope": 1.1415155517055786,
       "marketBlendWeight": 1,
       "reliableAssets": [
         "BNB",
@@ -1343,34 +1499,34 @@
         {
           "asset": "BTC",
           "seriesTicker": "KXBTC15M",
-          "sampleSize": 106,
+          "sampleSize": 107,
           "hitRate": 97.2,
-          "grossReturn": -1.4,
-          "netReturn": -1.5,
-          "averageNetProfitCents": -1.44,
-          "maxDrawdown": 1.7,
+          "grossReturn": -1.2,
+          "netReturn": -1.3,
+          "averageNetProfitCents": -1.32,
+          "maxDrawdown": 1.6,
           "profitable": false
         },
         {
           "asset": "ETH",
           "seriesTicker": "KXETH15M",
-          "sampleSize": 116,
+          "sampleSize": 117,
           "hitRate": 97.4,
           "grossReturn": -1,
           "netReturn": -1.1,
-          "averageNetProfitCents": -1.06,
+          "averageNetProfitCents": -1.1,
           "maxDrawdown": 2.3,
           "profitable": false
         },
         {
           "asset": "SOL",
           "seriesTicker": "KXSOL15M",
-          "sampleSize": 120,
+          "sampleSize": 119,
           "hitRate": 97.5,
-          "grossReturn": -1.1,
-          "netReturn": -1.2,
-          "averageNetProfitCents": -1.18,
-          "maxDrawdown": 1.6,
+          "grossReturn": -1.2,
+          "netReturn": -1.3,
+          "averageNetProfitCents": -1.28,
+          "maxDrawdown": 1.7,
           "profitable": false
         },
         {
@@ -1378,38 +1534,38 @@
           "seriesTicker": "KXXRP15M",
           "sampleSize": 124,
           "hitRate": 100,
-          "grossReturn": 1.7,
+          "grossReturn": 1.8,
           "netReturn": 1.6,
-          "averageNetProfitCents": 1.57,
+          "averageNetProfitCents": 1.61,
           "maxDrawdown": 0,
           "profitable": true
         },
         {
           "asset": "DOGE",
           "seriesTicker": "KXDOGE15M",
-          "sampleSize": 113,
+          "sampleSize": 114,
           "hitRate": 100,
-          "grossReturn": 1.7,
-          "netReturn": 1.6,
-          "averageNetProfitCents": 1.54,
+          "grossReturn": 1.6,
+          "netReturn": 1.5,
+          "averageNetProfitCents": 1.49,
           "maxDrawdown": 0,
           "profitable": true
         },
         {
           "asset": "BNB",
           "seriesTicker": "KXBNB15M",
-          "sampleSize": 115,
+          "sampleSize": 113,
           "hitRate": 99.1,
           "grossReturn": 0.6,
           "netReturn": 0.5,
-          "averageNetProfitCents": 0.46,
+          "averageNetProfitCents": 0.45,
           "maxDrawdown": 0.9,
           "profitable": true
         },
         {
           "asset": "HYPE",
           "seriesTicker": "KXHYPE15M",
-          "sampleSize": 127,
+          "sampleSize": 125,
           "hitRate": 99.2,
           "grossReturn": 0.7,
           "netReturn": 0.6,
@@ -1420,52 +1576,52 @@
       ],
       "performance": [
         {
-          "label": "Sep 12, 5 AM",
-          "cumulativeReturn": 1.4,
-          "hitRate": 100,
+          "label": "Sep 12, 7 AM",
+          "cumulativeReturn": 0.7,
+          "hitRate": 99,
           "trades": 103
         },
         {
-          "label": "Sep 12, 9 AM",
-          "cumulativeReturn": 0.2,
-          "hitRate": 98.5,
-          "trades": 206
+          "label": "Sep 12, 12 PM",
+          "cumulativeReturn": -0.6,
+          "hitRate": 97.6,
+          "trades": 205
         },
         {
-          "label": "Sep 12, 2 PM",
-          "cumulativeReturn": 0,
-          "hitRate": 98.4,
+          "label": "Sep 12, 5 PM",
+          "cumulativeReturn": -0.9,
+          "hitRate": 97.4,
           "trades": 308
         },
         {
-          "label": "Sep 12, 7 PM",
-          "cumulativeReturn": -0.3,
-          "hitRate": 98.1,
-          "trades": 411
+          "label": "Sep 12, 10 PM",
+          "cumulativeReturn": -0.1,
+          "hitRate": 98,
+          "trades": 410
         },
         {
-          "label": "Sep 13, 12 AM",
+          "label": "Sep 13, 3 AM",
           "cumulativeReturn": 0,
           "hitRate": 98.2,
-          "trades": 514
+          "trades": 512
         },
         {
-          "label": "Sep 13, 4 AM",
+          "label": "Sep 13, 7 AM",
           "cumulativeReturn": 0.2,
           "hitRate": 98.5,
-          "trades": 616
+          "trades": 615
         },
         {
-          "label": "Sep 13, 9 AM",
-          "cumulativeReturn": 0.3,
+          "label": "Sep 13, 11 AM",
+          "cumulativeReturn": 0.2,
           "hitRate": 98.7,
-          "trades": 719
+          "trades": 717
         },
         {
-          "label": "Sep 13, 1 PM",
+          "label": "Sep 13, 4 PM",
           "cumulativeReturn": 0.1,
           "hitRate": 98.7,
-          "trades": 821
+          "trades": 819
         }
       ]
     }

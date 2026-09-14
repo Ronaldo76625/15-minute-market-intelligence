@@ -184,6 +184,102 @@ export interface KalshiForwardTracking {
   assets: KalshiForwardAssetStats[];
 }
 
+export type KalshiEarlyObservationSide = typeof KalshiEarlyObservationSide[keyof typeof KalshiEarlyObservationSide];
+
+
+export const KalshiEarlyObservationSide = {
+  YES: 'YES',
+  NO: 'NO',
+} as const;
+
+export type KalshiEarlyObservationRecommendation = typeof KalshiEarlyObservationRecommendation[keyof typeof KalshiEarlyObservationRecommendation];
+
+
+export const KalshiEarlyObservationRecommendation = {
+  favorable: 'favorable',
+  wait: 'wait',
+  avoid: 'avoid',
+} as const;
+
+export type KalshiEarlyObservationQualificationReason = typeof KalshiEarlyObservationQualificationReason[keyof typeof KalshiEarlyObservationQualificationReason];
+
+
+export const KalshiEarlyObservationQualificationReason = {
+  ready: 'ready',
+  outside_window: 'outside_window',
+  insufficient_history: 'insufficient_history',
+  stale_candles: 'stale_candles',
+  wide_spread: 'wide_spread',
+} as const;
+
+export interface KalshiEarlyObservation {
+  side: KalshiEarlyObservationSide;
+  yesProbability: number;
+  noProbability: number;
+  confidence: number;
+  marketYesProbability: number;
+  netExpectedValue: number;
+  recommendation: KalshiEarlyObservationRecommendation;
+  observedAt: string;
+  secondsToClose: number;
+  horizonMinutes: number;
+  horizonHitRate: number;
+  horizonHitRateLowerBound: number;
+  horizonSampleSize: number;
+  horizonConfidenceThreshold: number;
+  isQualified: boolean;
+  qualificationReason: KalshiEarlyObservationQualificationReason;
+}
+
+export type KalshiEarlyForecastPreviousResult = typeof KalshiEarlyForecastPreviousResult[keyof typeof KalshiEarlyForecastPreviousResult];
+
+
+export const KalshiEarlyForecastPreviousResult = {
+  YES: 'YES',
+  NO: 'NO',
+} as const;
+
+export type KalshiEarlyForecastPhase = typeof KalshiEarlyForecastPhase[keyof typeof KalshiEarlyForecastPhase];
+
+
+export const KalshiEarlyForecastPhase = {
+  preliminary: 'preliminary',
+  initial: 'initial',
+  confirmed: 'confirmed',
+} as const;
+
+export type KalshiEarlyForecastAgreement = typeof KalshiEarlyForecastAgreement[keyof typeof KalshiEarlyForecastAgreement];
+
+
+export const KalshiEarlyForecastAgreement = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+  revised: 'revised',
+} as const;
+
+export type KalshiEarlyForecastRecommendation = typeof KalshiEarlyForecastRecommendation[keyof typeof KalshiEarlyForecastRecommendation];
+
+
+export const KalshiEarlyForecastRecommendation = {
+  favorable: 'favorable',
+  wait: 'wait',
+  avoid: 'avoid',
+} as const;
+
+export interface KalshiEarlyForecast {
+  ticker: string;
+  asset: string;
+  title: string;
+  closeTime: string;
+  previousResult?: KalshiEarlyForecastPreviousResult;
+  phase: KalshiEarlyForecastPhase;
+  agreement: KalshiEarlyForecastAgreement;
+  recommendation: KalshiEarlyForecastRecommendation;
+  initial?: KalshiEarlyObservation;
+  confirmation?: KalshiEarlyObservation;
+  current: KalshiEarlyObservation;
+}
+
 export type KalshiDashboardDataFreshness = typeof KalshiDashboardDataFreshness[keyof typeof KalshiDashboardDataFreshness];
 
 
@@ -238,6 +334,7 @@ export interface KalshiDashboard {
   confidenceThreshold: number;
   assetStats: KalshiAssetStats[];
   liveTracking: KalshiForwardTracking;
+  earlyForecasts: KalshiEarlyForecast[];
   signals: KalshiSignal[];
   priceHistory: KalshiPricePoint[];
   performance: KalshiPerformancePoint[];
