@@ -63,6 +63,8 @@ export const translations = {
     previousPending: "result pending",
     collectingMinute1: "Collecting the first complete minute",
     collectingMinute2: "First reading saved; awaiting minute 2",
+    missedEarlyReading:
+      "The exact opening reading was unavailable; the current view remains visible",
     confirmedReading: "Both readings agree",
     revisedReading: "Readings disagree — no clear edge",
     pendingReading: "Confirmation pending",
@@ -266,6 +268,8 @@ export const translations = {
     previousPending: "resultado pendiente",
     collectingMinute1: "Recopilando el primer minuto completo",
     collectingMinute2: "Primera lectura guardada; esperando el minuto 2",
+    missedEarlyReading:
+      "No estuvo disponible la lectura exacta de apertura; se mantiene visible la lectura actual",
     confirmedReading: "Las dos lecturas coinciden",
     revisedReading: "Las lecturas discrepan — sin ventaja clara",
     pendingReading: "Confirmación pendiente",

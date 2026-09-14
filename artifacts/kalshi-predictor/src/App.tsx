@@ -751,6 +751,8 @@ function Home() {
                     </tr>
                   ) : (
                     dashboard.earlyForecasts.map((forecast) => {
+                      const earlyWindowPassed =
+                        forecast.current.secondsToClose < 705;
                       const finalReading =
                         forecast.confirmation ??
                         forecast.initial ??
@@ -785,7 +787,11 @@ function Home() {
                           <td className="px-4 py-5">
                             <EarlyReadingCell
                               observation={forecast.initial}
-                              pendingText={copy.collectingMinute1}
+                              pendingText={
+                                earlyWindowPassed
+                                  ? copy.missedEarlyReading
+                                  : copy.collectingMinute1
+                              }
                               language={language}
                             />
                           </td>
@@ -793,9 +799,11 @@ function Home() {
                             <EarlyReadingCell
                               observation={forecast.confirmation}
                               pendingText={
-                                forecast.initial
-                                  ? copy.collectingMinute2
-                                  : copy.collectingMinute1
+                                earlyWindowPassed
+                                  ? copy.missedEarlyReading
+                                  : forecast.initial
+                                    ? copy.collectingMinute2
+                                    : copy.collectingMinute1
                               }
                               language={language}
                             />
