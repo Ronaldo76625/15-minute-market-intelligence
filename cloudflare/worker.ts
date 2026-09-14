@@ -41,6 +41,8 @@ const EARLY_INITIAL_MAX_SECONDS_TO_CLOSE = 855;
 const EARLY_INITIAL_MIN_SECONDS_TO_CLOSE = 795;
 const EARLY_CONFIRMATION_MAX_SECONDS_TO_CLOSE = 794;
 const EARLY_CONFIRMATION_MIN_SECONDS_TO_CLOSE = 705;
+const EARLY_INITIAL_TARGET_SECONDS_TO_CLOSE = 14 * 60;
+const EARLY_CONFIRMATION_TARGET_SECONDS_TO_CLOSE = 13 * 60;
 const DIRECT_EARLY_REFRESH_MAX_AGE_MS = 55 * 1_000;
 const MARKET_TIME_ZONE = "America/New_York";
 const PUBLISHED_SNAPSHOT_URL =
@@ -126,10 +128,17 @@ type EarlyForecast = {
   current: EarlyForecastObservation;
 };
 
+type StoredOpeningObservations = {
+  ticker: string;
+  initial?: EarlyForecastObservation;
+  confirmation?: EarlyForecastObservation;
+};
+
 type StoredSnapshot = {
   markets: Array<ReturnType<typeof toDashboardMarket>>;
   signals: LiveSignal[];
   priceHistory: Array<ReturnType<typeof toPricePoint>>;
+  openingObservations?: StoredOpeningObservations[];
   asOf: string;
   model: ValidatedKalshiModel;
 };
@@ -195,10 +204,10 @@ function compactUsd(value: number): string {
   }).format(value);
 }
 
-function timeToClose(closeTime: string): string {
+function timeToClose(closeTime: string, referenceTimeMs = Date.now()): string {
   const remainingSeconds = Math.max(
     0,
-    Math.floor((Date.parse(closeTime) - Date.now()) / 1_000),
+    Math.floor((Date.parse(closeTime) - referenceTimeMs) / 1_000),
   );
   const minutes = Math.floor(remainingSeconds / 60);
   const seconds = remainingSeconds % 60;
@@ -314,12 +323,18 @@ function buildSignal(
   market: KalshiApiMarket,
   candles: KalshiApiCandle[],
   selectedModel: ValidatedKalshiModel = bundledModel,
+  observedAtMs = Date.now(),
 ) {
   const secondsToClose = Math.max(
     0,
-    Math.floor((Date.parse(market.close_time) - Date.now()) / 1_000),
+    Math.floor((Date.parse(market.close_time) - observedAtMs) / 1_000),
   );
-  const prediction = predictLiveMarket(market, candles, selectedModel);
+  const prediction = predictLiveMarket(
+    market,
+    candles,
+    selectedModel,
+    observedAtMs,
+  );
   const horizon = prediction.horizon;
   const rawYesProbability = prediction.yesProbability;
   const calibrationPenalty = clamp(
@@ -379,7 +394,7 @@ function buildSignal(
   );
   const latestCandleTimestamp = candles.at(-1)?.end_period_ts;
   const latestCandleAgeSeconds = latestCandleTimestamp
-    ? Math.floor(Date.now() / 1_000 - latestCandleTimestamp)
+    ? Math.floor(observedAtMs / 1_000 - latestCandleTimestamp)
     : Number.POSITIVE_INFINITY;
   const hasEnoughCandles = candles.length >= MIN_CANDLE_COUNT;
   const candlesAreRecent =
@@ -436,7 +451,7 @@ function buildSignal(
     edge: rounded(edge),
     confidence,
     liquidity: compactUsd(numberFrom(market.liquidity_dollars)),
-    timeToClose: timeToClose(market.close_time),
+    timeToClose: timeToClose(market.close_time, observedAtMs),
     status,
     expectedValue: rounded(expectedValue),
     estimatedFee: rounded(estimatedFee, 4),
@@ -744,6 +759,99 @@ function toEarlyObservation(signal: LiveSignal): EarlyForecastObservation {
   };
 }
 
+function historicalMarketAtCandle(
+  market: KalshiApiMarket,
+  candles: KalshiApiCandle[],
+  candle: KalshiApiCandle,
+): KalshiApiMarket | undefined {
+  const traded = numberFrom(candle.price?.close_dollars);
+  const rawBid = numberFrom(candle.yes_bid?.close_dollars);
+  const rawAsk = numberFrom(candle.yes_ask?.close_dollars);
+  const yesBid = rawBid || traded || rawAsk;
+  const yesAsk = rawAsk || traded || rawBid;
+  if (yesBid <= 0 || yesAsk <= 0 || yesBid >= 1 || yesAsk >= 1) {
+    return undefined;
+  }
+  const volume = candles.reduce(
+    (sum, item) => sum + numberFrom(item.volume_fp),
+    0,
+  );
+  return {
+    ...market,
+    yes_bid_dollars: yesBid.toFixed(4),
+    yes_ask_dollars: yesAsk.toFixed(4),
+    no_bid_dollars: clamp(1 - yesAsk, 0.001, 0.999).toFixed(4),
+    no_ask_dollars: clamp(1 - yesBid, 0.001, 0.999).toFixed(4),
+    last_price_dollars: (traded || (yesBid + yesAsk) / 2).toFixed(4),
+    volume_fp: volume.toFixed(2),
+  };
+}
+
+function historicalOpeningObservation(
+  market: KalshiApiMarket,
+  candles: KalshiApiCandle[],
+  targetSecondsToClose: number,
+  selectedModel: ValidatedKalshiModel,
+): EarlyForecastObservation | undefined {
+  const closeTimeMs = Date.parse(market.close_time);
+  const openTimeMs = Date.parse(market.open_time);
+  if (!Number.isFinite(closeTimeMs) || !Number.isFinite(openTimeMs)) {
+    return undefined;
+  }
+  const observedAtMs = closeTimeMs - targetSecondsToClose * 1_000;
+  if (Date.now() < observedAtMs) return undefined;
+  const exactCandle = candles.find(
+    (candle) => Math.abs(candle.end_period_ts * 1_000 - observedAtMs) < 1_000,
+  );
+  if (!exactCandle) return undefined;
+  const availableCandles = candles
+    .filter(
+      (candle) =>
+        candle.end_period_ts * 1_000 > openTimeMs &&
+        candle.end_period_ts * 1_000 <= observedAtMs,
+    )
+    .sort((left, right) => left.end_period_ts - right.end_period_ts);
+  const historicalMarket = historicalMarketAtCandle(
+    market,
+    availableCandles,
+    exactCandle,
+  );
+  if (!historicalMarket || availableCandles.length === 0) return undefined;
+  return toEarlyObservation(
+    buildSignal(
+      historicalMarket,
+      availableCandles,
+      selectedModel,
+      observedAtMs,
+    ),
+  );
+}
+
+function buildOpeningObservations(
+  markets: KalshiApiMarket[],
+  candlesByTicker: Map<string, KalshiApiCandle[]>,
+  selectedModel: ValidatedKalshiModel,
+): StoredOpeningObservations[] {
+  return markets.map((market) => {
+    const candles = candlesByTicker.get(market.ticker) ?? [];
+    return {
+      ticker: market.ticker,
+      initial: historicalOpeningObservation(
+        market,
+        candles,
+        EARLY_INITIAL_TARGET_SECONDS_TO_CLOSE,
+        selectedModel,
+      ),
+      confirmation: historicalOpeningObservation(
+        market,
+        candles,
+        EARLY_CONFIRMATION_TARGET_SECONDS_TO_CLOSE,
+        selectedModel,
+      ),
+    };
+  });
+}
+
 function parseEarlyObservation(
   payload: string | null,
 ): EarlyForecastObservation | undefined {
@@ -813,6 +921,7 @@ async function updateEarlyForecastLedger(
   signals: LiveSignal[],
   markets: StoredSnapshot["markets"],
   settlements: KalshiSettlement[] = [],
+  recoveredObservations: StoredOpeningObservations[] = [],
 ): Promise<EarlyForecast[]> {
   if (settlements.length > 0) {
     const pending = await env.DB.prepare(
@@ -853,6 +962,12 @@ async function updateEarlyForecastLedger(
   const existingByTicker = new Map(
     existingResult.results.map((row) => [row.ticker, row]),
   );
+  const recoveredByTicker = new Map(
+    recoveredObservations.map((observation) => [
+      observation.ticker,
+      observation,
+    ]),
+  );
   const now = new Date().toISOString();
   const statements = currentMarkets.map((market) => {
     const signal = signalByTicker.get(market.ticker)!;
@@ -861,6 +976,9 @@ async function updateEarlyForecastLedger(
     const existingInitial = parseEarlyObservation(
       existing?.initial_payload ?? null,
     );
+    const recovered = recoveredByTicker.get(market.ticker);
+    const candidateInitial = recovered?.initial;
+    const candidateConfirmation = recovered?.confirmation;
     const observationsAreSeparated =
       Boolean(existingInitial) &&
       Date.parse(observation.observedAt) -
@@ -868,20 +986,32 @@ async function updateEarlyForecastLedger(
         45 * 1_000;
     const canRecord = signal.isQualified;
     const initialPayload =
-      !existing?.initial_payload &&
-      canRecord &&
-      signal.secondsToClose <= EARLY_INITIAL_MAX_SECONDS_TO_CLOSE &&
-      signal.secondsToClose >= EARLY_INITIAL_MIN_SECONDS_TO_CLOSE
-        ? JSON.stringify(observation)
-        : null;
+      !existing?.initial_payload && candidateInitial
+        ? JSON.stringify(candidateInitial)
+        : !existing?.initial_payload &&
+            canRecord &&
+            signal.secondsToClose <= EARLY_INITIAL_MAX_SECONDS_TO_CLOSE &&
+            signal.secondsToClose >= EARLY_INITIAL_MIN_SECONDS_TO_CLOSE
+          ? JSON.stringify(observation)
+          : null;
+    const initialForConfirmation = existingInitial ?? candidateInitial;
+    const recoveredObservationsAreSeparated =
+      Boolean(initialForConfirmation && candidateConfirmation) &&
+      Date.parse(candidateConfirmation?.observedAt ?? "") -
+        Date.parse(initialForConfirmation?.observedAt ?? "") >=
+        45 * 1_000;
     const confirmationPayload =
       !existing?.confirmation_payload &&
-      observationsAreSeparated &&
-      canRecord &&
-      signal.secondsToClose <= EARLY_CONFIRMATION_MAX_SECONDS_TO_CLOSE &&
-      signal.secondsToClose >= EARLY_CONFIRMATION_MIN_SECONDS_TO_CLOSE
-        ? JSON.stringify(observation)
-        : null;
+      candidateConfirmation &&
+      recoveredObservationsAreSeparated
+        ? JSON.stringify(candidateConfirmation)
+        : !existing?.confirmation_payload &&
+            observationsAreSeparated &&
+            canRecord &&
+            signal.secondsToClose <= EARLY_CONFIRMATION_MAX_SECONDS_TO_CLOSE &&
+            signal.secondsToClose >= EARLY_CONFIRMATION_MIN_SECONDS_TO_CLOSE
+          ? JSON.stringify(observation)
+          : null;
     const previousResult = previousResultForMarket(market, settlements);
     return env.DB.prepare(
       `INSERT INTO early_forecasts (
@@ -951,19 +1081,22 @@ export async function generateLiveMarketSnapshot(
     candlesByTicker = await fetchCandlesForMarkets(apiMarkets);
   } catch (error) {
     console.warn("Unable to load live candlesticks", error);
-    const chartMarket =
-      apiMarkets.find((market) => market.ticker.startsWith("KXBTC15M")) ??
-      apiMarkets[0];
-    if (chartMarket) {
-      try {
-        candlesByTicker.set(
-          chartMarket.ticker,
-          await fetchCandlesForMarket(chartMarket),
+    const fallbackResults = await Promise.allSettled(
+      apiMarkets.map(async (market) => ({
+        ticker: market.ticker,
+        candles: await fetchCandlesForMarket(market),
+      })),
+    );
+    fallbackResults.forEach((result) => {
+      if (result.status === "fulfilled") {
+        candlesByTicker.set(result.value.ticker, result.value.candles);
+      } else {
+        console.warn(
+          "Unable to load individual candle fallback",
+          result.reason,
         );
-      } catch (fallbackError) {
-        console.warn("Unable to load chart fallback", fallbackError);
       }
-    }
+    });
   }
   const preferredChartMarket =
     apiMarkets.find((market) => market.ticker.startsWith("KXBTC15M")) ??
@@ -980,11 +1113,17 @@ export async function generateLiveMarketSnapshot(
       selectedModel,
     ),
   );
+  const openingObservations = buildOpeningObservations(
+    apiMarkets,
+    candlesByTicker,
+    selectedModel,
+  );
 
   return {
     markets: apiMarkets.map(toDashboardMarket),
     signals,
     priceHistory,
+    openingObservations,
     asOf: new Date().toISOString(),
     model: selectedModel,
   };
@@ -1067,6 +1206,9 @@ function removeExpiredMarkets(snapshot: StoredSnapshot): StoredSnapshot {
   return {
     ...snapshot,
     markets,
+    openingObservations: snapshot.openingObservations?.filter((observation) =>
+      tickers.has(observation.ticker),
+    ),
     signals: refreshSignalTimers(
       snapshot.signals.filter((signal) => tickers.has(signal.ticker)),
       markets,
@@ -1142,6 +1284,15 @@ function mergeSnapshots(
       ),
       ...incoming.signals,
     ],
+    openingObservations: [
+      ...(currentPrevious.openingObservations ?? []).filter((observation) => {
+        const market = currentPrevious.markets.find(
+          (candidate) => candidate.ticker === observation.ticker,
+        );
+        return market && !refreshedAssets.has(market.asset);
+      }),
+      ...(incoming.openingObservations ?? []),
+    ],
     priceHistory: refreshedAssets.has("BTC")
       ? incoming.priceHistory
       : currentPrevious.priceHistory,
@@ -1185,6 +1336,7 @@ async function refreshLiveSnapshot(
     current.signals,
     current.markets,
     settlements,
+    current.openingObservations,
   );
 }
 
@@ -1282,6 +1434,7 @@ async function getLiveSnapshot(
     currentSignals,
     current.markets,
     settlements,
+    current.openingObservations,
   );
   const snapshot: LiveSnapshot = {
     ...current,
@@ -1326,6 +1479,7 @@ async function syncPublishedSnapshot(env: Env): Promise<void> {
     current.signals,
     current.markets,
     published.settlements,
+    current.openingObservations,
   );
 }
 
@@ -1376,7 +1530,31 @@ function isStoredSnapshot(
         typeof signal.isQualified === "boolean",
     ) &&
     Array.isArray(candidate.priceHistory) &&
+    (candidate.openingObservations === undefined ||
+      (Array.isArray(candidate.openingObservations) &&
+        candidate.openingObservations.every(
+          (observation) =>
+            Boolean(observation) &&
+            typeof observation.ticker === "string" &&
+            (observation.initial === undefined ||
+              isEarlyObservation(observation.initial)) &&
+            (observation.confirmation === undefined ||
+              isEarlyObservation(observation.confirmation)),
+        ))) &&
     isValidatedModel(candidate.model)
+  );
+}
+
+function isEarlyObservation(value: unknown): value is EarlyForecastObservation {
+  if (!value || typeof value !== "object") return false;
+  const observation = value as Partial<EarlyForecastObservation>;
+  return (
+    (observation.side === "YES" || observation.side === "NO") &&
+    Number.isFinite(observation.yesProbability) &&
+    Number.isFinite(observation.noProbability) &&
+    Number.isFinite(observation.confidence) &&
+    typeof observation.observedAt === "string" &&
+    Number.isFinite(Date.parse(observation.observedAt))
   );
 }
 

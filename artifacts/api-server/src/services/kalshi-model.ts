@@ -1277,16 +1277,17 @@ export function predictLiveMarket(
   market: KalshiApiMarket,
   candles: KalshiApiCandle[],
   model: ValidatedKalshiModel,
+  observedAtMs = Date.now(),
 ): LivePrediction {
   const secondsToClose = Math.max(
     0,
-    Math.floor((Date.parse(market.close_time) - Date.now()) / 1_000),
+    Math.floor((Date.parse(market.close_time) - observedAtMs) / 1_000),
   );
   const horizon = validatedHorizonFor(model, secondsToClose);
   const ordered = orderedCandles(candles);
   const latestIndex = Math.max(0, ordered.length - 1);
   const marketQuote = quoteFromMarket(market);
-  const currentHour = new Date().getUTCHours();
+  const currentHour = new Date(observedAtMs).getUTCHours();
   const hourAngle = (2 * Math.PI * currentHour) / 24;
   const normalizedVolume = Math.log1p(numberFrom(market.volume_fp)) / 10;
   const candleFeatures = featuresAtIndex(market, ordered, latestIndex) ?? [
@@ -1297,7 +1298,7 @@ export function predictLiveMarket(
     0,
     marketQuote.spread * 10,
     clamp(
-      (Date.now() - Date.parse(market.open_time)) /
+      (observedAtMs - Date.parse(market.open_time)) /
         Math.max(
           1,
           Date.parse(market.close_time) - Date.parse(market.open_time),

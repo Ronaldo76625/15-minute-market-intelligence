@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/update-kalshi-snapshot.yml"
+      - "cloudflare/worker.ts"
+      - "cloudflare/generate-live-snapshot.ts"
+      - "artifacts/api-server/src/services/kalshi-model.ts"
   schedule:
     - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
@@ -56,7 +59,7 @@ jobs:
           git push --force origin HEAD:live-data
       - name: Wait before the next free refresh
         if: ${{ !cancelled() }}
-        run: sleep 240
+        run: sleep 60
       - name: Queue the next refresh
         if: ${{ !cancelled() }}
         env:
