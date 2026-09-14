@@ -1404,7 +1404,10 @@ function isValidatedModel(value: unknown): value is ValidatedKalshiModel {
     Array.isArray(candidate.assetStats) &&
     Array.isArray(candidate.reliableAssets) &&
     Array.isArray(candidate.horizons) &&
-    candidate.horizons.length >= 9 &&
+    // Accept the immediately preceding eight-horizon snapshot during a
+    // rolling deploy. Publication gates still require all nine v5 horizons,
+    // so this only prevents a transient outage while edge caches converge.
+    candidate.horizons.length >= 8 &&
     candidate.horizons.every(
       (horizon) =>
         Number.isFinite(horizon.targetSeconds) &&
