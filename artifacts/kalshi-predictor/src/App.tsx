@@ -705,7 +705,7 @@ function Home() {
               </p>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1120px] border-collapse text-left">
+              <table className="w-full min-w-[2020px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-border/70 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                     <th className="px-5 py-3 font-medium">
@@ -716,6 +716,18 @@ function Home() {
                     </th>
                     <th className="px-4 py-3 font-medium">
                       {copy.earlyMinute2}
+                    </th>
+                    <th className="px-4 py-3 font-medium">
+                      {copy.earlyMinute5}
+                    </th>
+                    <th className="px-4 py-3 font-medium">
+                      {copy.earlyMinute7}
+                    </th>
+                    <th className="px-4 py-3 font-medium">
+                      {copy.earlyMinute10}
+                    </th>
+                    <th className="px-4 py-3 font-medium">
+                      {copy.earlyMinute12}
                     </th>
                     <th className="px-5 py-3 font-medium">
                       {copy.earlyDecision}
@@ -735,6 +747,11 @@ function Home() {
                         <td className="px-4 py-5">
                           <SkeletonBlock className="h-16 w-52" />
                         </td>
+                        {Array.from({ length: 4 }).map((__, cell) => (
+                          <td className="px-4 py-5" key={cell}>
+                            <SkeletonBlock className="h-16 w-52" />
+                          </td>
+                        ))}
                         <td className="px-5 py-5">
                           <SkeletonBlock className="h-12 w-44" />
                         </td>
@@ -743,7 +760,7 @@ function Home() {
                   ) : !dashboard?.earlyForecasts?.length ? (
                     <tr>
                       <td
-                        colSpan={4}
+                        colSpan={8}
                         className="px-5 py-10 text-center text-sm text-muted-foreground"
                       >
                         {copy.noEarlyMarkets}
@@ -751,12 +768,24 @@ function Home() {
                     </tr>
                   ) : (
                     dashboard.earlyForecasts.map((forecast) => {
-                      const earlyWindowPassed =
-                        forecast.current.secondsToClose < 705;
+                      const milestones = [
+                        { minute: 1, observation: forecast.initial },
+                        { minute: 2, observation: forecast.confirmation },
+                        { minute: 5, observation: forecast.minute5 },
+                        { minute: 7, observation: forecast.minute7 },
+                        { minute: 10, observation: forecast.minute10 },
+                        { minute: 12, observation: forecast.minute12 },
+                      ];
+                      const availableReadings = milestones
+                        .map((milestone) => milestone.observation)
+                        .filter(
+                          (
+                            observation,
+                          ): observation is KalshiEarlyObservation =>
+                            Boolean(observation),
+                        );
                       const finalReading =
-                        forecast.confirmation ??
-                        forecast.initial ??
-                        forecast.current;
+                        availableReadings.at(-1) ?? forecast.current;
                       const agreementText =
                         forecast.agreement === "confirmed"
                           ? copy.confirmedReading
@@ -786,28 +815,30 @@ function Home() {
                           </td>
                           <td className="px-4 py-5">
                             <EarlyReadingCell
-                              observation={forecast.initial}
-                              pendingText={
-                                earlyWindowPassed
-                                  ? copy.missedEarlyReading
-                                  : copy.collectingMinute1
-                              }
+                              observation={milestones[0].observation}
+                              pendingText={copy.milestoneStatus(
+                                milestones[0].minute,
+                                forecast.current.secondsToClose <= 840,
+                              )}
                               language={language}
                             />
                           </td>
-                          <td className="px-4 py-5">
-                            <EarlyReadingCell
-                              observation={forecast.confirmation}
-                              pendingText={
-                                earlyWindowPassed
-                                  ? copy.missedEarlyReading
-                                  : forecast.initial
-                                    ? copy.collectingMinute2
-                                    : copy.collectingMinute1
-                              }
-                              language={language}
-                            />
-                          </td>
+                          {milestones.slice(1).map((milestone) => (
+                            <td
+                              className="px-4 py-5"
+                              key={`${forecast.ticker}-${milestone.minute}`}
+                            >
+                              <EarlyReadingCell
+                                observation={milestone.observation}
+                                pendingText={copy.milestoneStatus(
+                                  milestone.minute,
+                                  forecast.current.secondsToClose <=
+                                    900 - milestone.minute * 60,
+                                )}
+                                language={language}
+                              />
+                            </td>
+                          ))}
                           <td className="px-5 py-5">
                             <span
                               className={`inline-flex rounded px-2 py-1 text-[10px] font-bold ${recommendationClass(forecast.recommendation)}`}

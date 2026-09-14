@@ -16,7 +16,7 @@ const BASE_FEATURE_COUNT = 17;
 const FEATURE_COUNT = BASE_FEATURE_COUNT + (SERIES.length - 1);
 const KALSHI_TAKER_FEE_RATE = 0.07;
 export const VALIDATED_HORIZON_SECONDS = [
-  840, 780, 720, 600, 480, 360, 240, 120, 60,
+  840, 780, 720, 600, 480, 360, 300, 240, 180, 120, 60,
 ] as const;
 
 const ASSET_BY_SERIES: Record<(typeof SERIES)[number], string> = {
@@ -1183,7 +1183,7 @@ export async function trainAndValidate(
   );
 
   return {
-    name: "Continuously calibrated multi-horizon market ensemble v5",
+    name: "Continuously calibrated multi-horizon market ensemble v6",
     trainedAt: new Date().toISOString(),
     trainingMarkets: trainingMarkets.length,
     calibrationMarkets: calibrationMarkets.length,

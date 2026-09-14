@@ -497,6 +497,14 @@ components:
           $ref: "#/components/schemas/KalshiEarlyObservation"
         confirmation:
           $ref: "#/components/schemas/KalshiEarlyObservation"
+        minute5:
+          $ref: "#/components/schemas/KalshiEarlyObservation"
+        minute7:
+          $ref: "#/components/schemas/KalshiEarlyObservation"
+        minute10:
+          $ref: "#/components/schemas/KalshiEarlyObservation"
+        minute12:
+          $ref: "#/components/schemas/KalshiEarlyObservation"
         current:
           $ref: "#/components/schemas/KalshiEarlyObservation"
     KalshiDashboard:

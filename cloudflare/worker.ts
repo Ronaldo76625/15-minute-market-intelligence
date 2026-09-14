@@ -43,6 +43,10 @@ const EARLY_CONFIRMATION_MAX_SECONDS_TO_CLOSE = 794;
 const EARLY_CONFIRMATION_MIN_SECONDS_TO_CLOSE = 705;
 const EARLY_INITIAL_TARGET_SECONDS_TO_CLOSE = 14 * 60;
 const EARLY_CONFIRMATION_TARGET_SECONDS_TO_CLOSE = 13 * 60;
+const MINUTE_5_TARGET_SECONDS_TO_CLOSE = 10 * 60;
+const MINUTE_7_TARGET_SECONDS_TO_CLOSE = 8 * 60;
+const MINUTE_10_TARGET_SECONDS_TO_CLOSE = 5 * 60;
+const MINUTE_12_TARGET_SECONDS_TO_CLOSE = 3 * 60;
 const DIRECT_EARLY_REFRESH_MAX_AGE_MS = 55 * 1_000;
 const MARKET_TIME_ZONE = "America/New_York";
 const PUBLISHED_SNAPSHOT_URL =
@@ -108,6 +112,10 @@ type EarlyForecastRow = {
   previous_result: "YES" | "NO" | null;
   initial_payload: string | null;
   confirmation_payload: string | null;
+  minute_5_payload: string | null;
+  minute_7_payload: string | null;
+  minute_10_payload: string | null;
+  minute_12_payload: string | null;
   result: "yes" | "no" | null;
   settled_at: string | null;
   created_at: string;
@@ -125,6 +133,10 @@ type EarlyForecast = {
   recommendation: "favorable" | "wait" | "avoid";
   initial?: EarlyForecastObservation;
   confirmation?: EarlyForecastObservation;
+  minute5?: EarlyForecastObservation;
+  minute7?: EarlyForecastObservation;
+  minute10?: EarlyForecastObservation;
+  minute12?: EarlyForecastObservation;
   current: EarlyForecastObservation;
 };
 
@@ -132,6 +144,10 @@ type StoredOpeningObservations = {
   ticker: string;
   initial?: EarlyForecastObservation;
   confirmation?: EarlyForecastObservation;
+  minute5?: EarlyForecastObservation;
+  minute7?: EarlyForecastObservation;
+  minute10?: EarlyForecastObservation;
+  minute12?: EarlyForecastObservation;
 };
 
 type StoredSnapshot = {
@@ -848,6 +864,30 @@ function buildOpeningObservations(
         EARLY_CONFIRMATION_TARGET_SECONDS_TO_CLOSE,
         selectedModel,
       ),
+      minute5: historicalOpeningObservation(
+        market,
+        candles,
+        MINUTE_5_TARGET_SECONDS_TO_CLOSE,
+        selectedModel,
+      ),
+      minute7: historicalOpeningObservation(
+        market,
+        candles,
+        MINUTE_7_TARGET_SECONDS_TO_CLOSE,
+        selectedModel,
+      ),
+      minute10: historicalOpeningObservation(
+        market,
+        candles,
+        MINUTE_10_TARGET_SECONDS_TO_CLOSE,
+        selectedModel,
+      ),
+      minute12: historicalOpeningObservation(
+        market,
+        candles,
+        MINUTE_12_TARGET_SECONDS_TO_CLOSE,
+        selectedModel,
+      ),
     };
   });
 }
@@ -891,29 +931,39 @@ function previousResultForMarket(
 }
 
 function earlyRecommendation(
-  initial: EarlyForecastObservation | undefined,
-  confirmation: EarlyForecastObservation | undefined,
+  observations: Array<EarlyForecastObservation | undefined>,
 ): "favorable" | "wait" | "avoid" {
-  if (!initial || !confirmation) return "wait";
-  if (initial.side !== confirmation.side) return "avoid";
-  const bothQualified = initial.isQualified && confirmation.isQualified;
-  const bothAboveThreshold =
-    initial.confidence >= initial.horizonConfidenceThreshold &&
-    confirmation.confidence >= confirmation.horizonConfidenceThreshold;
-  const conservativeEvidence =
-    initial.horizonHitRateLowerBound >= 60 &&
-    confirmation.horizonHitRateLowerBound >= 60;
+  const available = observations.filter(
+    (observation): observation is EarlyForecastObservation =>
+      Boolean(observation),
+  );
+  if (available.length < 2) return "wait";
+  const latest = available.at(-1)!;
+  if (available.some((observation) => observation.side !== available[0].side)) {
+    return "avoid";
+  }
+  const allQualified = available.every(
+    (observation) => observation.isQualified,
+  );
+  const allAboveThreshold = available.every(
+    (observation) =>
+      observation.confidence >= observation.horizonConfidenceThreshold,
+  );
+  const conservativeEvidence = available.every(
+    (observation) => observation.horizonHitRateLowerBound >= 60,
+  );
   if (
-    bothQualified &&
-    bothAboveThreshold &&
+    allQualified &&
+    allAboveThreshold &&
     conservativeEvidence &&
-    initial.recommendation === "favorable" &&
-    confirmation.recommendation === "favorable" &&
-    confirmation.netExpectedValue >= 3
+    available.every(
+      (observation) => observation.recommendation === "favorable",
+    ) &&
+    latest.netExpectedValue >= 3
   ) {
     return "favorable";
   }
-  return confirmation.recommendation === "avoid" ? "avoid" : "wait";
+  return latest.recommendation === "avoid" ? "avoid" : "wait";
 }
 
 async function updateEarlyForecastLedger(
@@ -979,6 +1029,10 @@ async function updateEarlyForecastLedger(
     const recovered = recoveredByTicker.get(market.ticker);
     const candidateInitial = recovered?.initial;
     const candidateConfirmation = recovered?.confirmation;
+    const candidateMinute5 = recovered?.minute5;
+    const candidateMinute7 = recovered?.minute7;
+    const candidateMinute10 = recovered?.minute10;
+    const candidateMinute12 = recovered?.minute12;
     const observationsAreSeparated =
       Boolean(existingInitial) &&
       Date.parse(observation.observedAt) -
@@ -1012,16 +1066,38 @@ async function updateEarlyForecastLedger(
             signal.secondsToClose >= EARLY_CONFIRMATION_MIN_SECONDS_TO_CLOSE
           ? JSON.stringify(observation)
           : null;
+    const minute5Payload =
+      !existing?.minute_5_payload && candidateMinute5
+        ? JSON.stringify(candidateMinute5)
+        : null;
+    const minute7Payload =
+      !existing?.minute_7_payload && candidateMinute7
+        ? JSON.stringify(candidateMinute7)
+        : null;
+    const minute10Payload =
+      !existing?.minute_10_payload && candidateMinute10
+        ? JSON.stringify(candidateMinute10)
+        : null;
+    const minute12Payload =
+      !existing?.minute_12_payload && candidateMinute12
+        ? JSON.stringify(candidateMinute12)
+        : null;
     const previousResult = previousResultForMarket(market, settlements);
     return env.DB.prepare(
       `INSERT INTO early_forecasts (
         ticker, asset, title, close_time, previous_result,
-        initial_payload, confirmation_payload, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        initial_payload, confirmation_payload, minute_5_payload,
+        minute_7_payload, minute_10_payload, minute_12_payload,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(ticker) DO UPDATE SET
         previous_result = COALESCE(excluded.previous_result, early_forecasts.previous_result),
         initial_payload = COALESCE(early_forecasts.initial_payload, excluded.initial_payload),
         confirmation_payload = COALESCE(early_forecasts.confirmation_payload, excluded.confirmation_payload),
+        minute_5_payload = COALESCE(early_forecasts.minute_5_payload, excluded.minute_5_payload),
+        minute_7_payload = COALESCE(early_forecasts.minute_7_payload, excluded.minute_7_payload),
+        minute_10_payload = COALESCE(early_forecasts.minute_10_payload, excluded.minute_10_payload),
+        minute_12_payload = COALESCE(early_forecasts.minute_12_payload, excluded.minute_12_payload),
         updated_at = excluded.updated_at`,
     ).bind(
       market.ticker,
@@ -1031,6 +1107,10 @@ async function updateEarlyForecastLedger(
       previousResult ?? null,
       initialPayload,
       confirmationPayload,
+      minute5Payload,
+      minute7Payload,
+      minute10Payload,
+      minute12Payload,
       now,
       now,
     );
@@ -1051,6 +1131,25 @@ async function updateEarlyForecastLedger(
     const confirmation = parseEarlyObservation(
       row?.confirmation_payload ?? null,
     );
+    const minute5 = parseEarlyObservation(row?.minute_5_payload ?? null);
+    const minute7 = parseEarlyObservation(row?.minute_7_payload ?? null);
+    const minute10 = parseEarlyObservation(row?.minute_10_payload ?? null);
+    const minute12 = parseEarlyObservation(row?.minute_12_payload ?? null);
+    const observations = [
+      initial,
+      confirmation,
+      minute5,
+      minute7,
+      minute10,
+      minute12,
+    ];
+    const available = observations.filter(
+      (observation): observation is EarlyForecastObservation =>
+        Boolean(observation),
+    );
+    const hasDisagreement = available.some(
+      (observation) => observation.side !== available[0]?.side,
+    );
     return {
       ticker: market.ticker,
       asset: market.asset,
@@ -1059,13 +1158,17 @@ async function updateEarlyForecastLedger(
       previousResult: row?.previous_result ?? undefined,
       phase: confirmation ? "confirmed" : initial ? "initial" : "preliminary",
       agreement: confirmation
-        ? initial?.side === confirmation.side
-          ? "confirmed"
-          : "revised"
+        ? hasDisagreement
+          ? "revised"
+          : "confirmed"
         : "pending",
-      recommendation: earlyRecommendation(initial, confirmation),
+      recommendation: earlyRecommendation(observations),
       initial,
       confirmation,
+      minute5,
+      minute7,
+      minute10,
+      minute12,
       current: toEarlyObservation(signal),
     } satisfies EarlyForecast;
   });
@@ -1539,7 +1642,15 @@ function isStoredSnapshot(
             (observation.initial === undefined ||
               isEarlyObservation(observation.initial)) &&
             (observation.confirmation === undefined ||
-              isEarlyObservation(observation.confirmation)),
+              isEarlyObservation(observation.confirmation)) &&
+            (observation.minute5 === undefined ||
+              isEarlyObservation(observation.minute5)) &&
+            (observation.minute7 === undefined ||
+              isEarlyObservation(observation.minute7)) &&
+            (observation.minute10 === undefined ||
+              isEarlyObservation(observation.minute10)) &&
+            (observation.minute12 === undefined ||
+              isEarlyObservation(observation.minute12)),
         ))) &&
     isValidatedModel(candidate.model)
   );
@@ -1583,9 +1694,9 @@ function isValidatedModel(value: unknown): value is ValidatedKalshiModel {
     Array.isArray(candidate.reliableAssets) &&
     Array.isArray(candidate.horizons) &&
     // Accept the immediately preceding eight-horizon snapshot during a
-    // rolling deploy. Publication gates still require all nine v5 horizons,
+    // rolling deploy. Publication gates require all eleven v6 horizons,
     // so this only prevents a transient outage while edge caches converge.
-    candidate.horizons.length >= 8 &&
+    candidate.horizons.length >= 9 &&
     candidate.horizons.every(
       (horizon) =>
         Number.isFinite(horizon.targetSeconds) &&

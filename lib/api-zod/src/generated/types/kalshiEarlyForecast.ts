@@ -22,5 +22,9 @@ export interface KalshiEarlyForecast {
   recommendation: KalshiEarlyForecastRecommendation;
   initial?: KalshiEarlyObservation;
   confirmation?: KalshiEarlyObservation;
+  minute5?: KalshiEarlyObservation;
+  minute7?: KalshiEarlyObservation;
+  minute10?: KalshiEarlyObservation;
+  minute12?: KalshiEarlyObservation;
   current: KalshiEarlyObservation;
 }

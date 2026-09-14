@@ -50,12 +50,16 @@ export const translations = {
       `${samples} unseen signals · ${coverage} coverage`,
     chronologicalTest: "Untouched chronological test",
     earlyEyebrow: "00 / early contract forecast",
-    earlyTitle: "Opening forecast: minute 1 + minute 2",
+    earlyTitle: "Contract forecast: minutes 1, 2, 5, 7, 10 and 12",
     earlyBody:
-      "The first reading is recorded after one complete minute and checked again after two. A favorable setup requires both readings to agree and pass their separate chronological validation.",
+      "The model records the exact one-minute candle at minutes 1, 2, 5, 7, 10 and 12. Each new checkpoint confirms or revises the expected closing side using its independently validated horizon.",
     earlyMarket: "Contract",
     earlyMinute1: "Minute 1 reading",
     earlyMinute2: "Minute 2 confirmation",
+    earlyMinute5: "Minute 5 reading",
+    earlyMinute7: "Minute 7 reading",
+    earlyMinute10: "Minute 10 reading",
+    earlyMinute12: "Minute 12 reading",
     earlyDecision: "Conservative view",
     previousClose: "Previous contract",
     previousUp: "finished UP / YES",
@@ -65,14 +69,18 @@ export const translations = {
     collectingMinute2: "First reading saved; awaiting minute 2",
     missedEarlyReading:
       "The exact opening reading was unavailable; the current view remains visible",
-    confirmedReading: "Both readings agree",
-    revisedReading: "Readings disagree — no clear edge",
+    confirmedReading: "Available readings agree",
+    revisedReading: "Available readings disagree — no clear edge",
     pendingReading: "Confirmation pending",
+    milestoneStatus: (minute: number, recovering: boolean) =>
+      recovering
+        ? `Recovering the exact minute ${minute} candle`
+        : `Waiting for minute ${minute}`,
     recordedAt: (time: string) => `Recorded at ${time}`,
     earlyEvidence: (hitRate: string, lowerBound: string, samples: number) =>
       `${hitRate} qualified hit rate · ${lowerBound} conservative floor · ${samples} unseen signals`,
     earlySafetyNote:
-      "This table never places trades. Its probabilities are experimental estimates; “favorable” is shown only after agreement, data-quality checks, validation thresholds, and positive estimated value after fees.",
+      "This table never places trades. Its probabilities are experimental estimates; “favorable” is shown only when all available checkpoints agree, pass data-quality and validation thresholds, and retain positive estimated value after fees.",
     noEarlyMarkets: "Waiting for the next active Kalshi contract.",
     predictionControls: "Prediction controls",
     advancedFilters: "Advanced filters",
@@ -255,12 +263,16 @@ export const translations = {
       `${samples} señales no vistas · cobertura ${coverage}`,
     chronologicalTest: "Prueba cronológica intacta",
     earlyEyebrow: "00 / pronóstico inicial del contrato",
-    earlyTitle: "Pronóstico de apertura: minuto 1 + minuto 2",
+    earlyTitle: "Pronóstico del contrato: minutos 1, 2, 5, 7, 10 y 12",
     earlyBody:
-      "La primera lectura se registra tras un minuto completo y se comprueba de nuevo después de dos. Para indicar una configuración favorable, ambas deben coincidir y aprobar su validación cronológica independiente.",
+      "El modelo registra la vela exacta de un minuto en los minutos 1, 2, 5, 7, 10 y 12. Cada nuevo punto confirma o revisa el lado esperado al cierre usando su horizonte validado de forma independiente.",
     earlyMarket: "Contrato",
     earlyMinute1: "Lectura del minuto 1",
     earlyMinute2: "Confirmación del minuto 2",
+    earlyMinute5: "Lectura del minuto 5",
+    earlyMinute7: "Lectura del minuto 7",
+    earlyMinute10: "Lectura del minuto 10",
+    earlyMinute12: "Lectura del minuto 12",
     earlyDecision: "Visión conservadora",
     previousClose: "Contrato anterior",
     previousUp: "terminó ARRIBA / SÍ",
@@ -270,14 +282,18 @@ export const translations = {
     collectingMinute2: "Primera lectura guardada; esperando el minuto 2",
     missedEarlyReading:
       "No estuvo disponible la lectura exacta de apertura; se mantiene visible la lectura actual",
-    confirmedReading: "Las dos lecturas coinciden",
-    revisedReading: "Las lecturas discrepan — sin ventaja clara",
+    confirmedReading: "Las lecturas disponibles coinciden",
+    revisedReading: "Las lecturas disponibles discrepan — sin ventaja clara",
     pendingReading: "Confirmación pendiente",
+    milestoneStatus: (minute: number, recovering: boolean) =>
+      recovering
+        ? `Recuperando la vela exacta del minuto ${minute}`
+        : `Esperando el minuto ${minute}`,
     recordedAt: (time: string) => `Registrada a las ${time}`,
     earlyEvidence: (hitRate: string, lowerBound: string, samples: number) =>
       `${hitRate} de acierto calificado · piso conservador ${lowerBound} · ${samples} señales no vistas`,
     earlySafetyNote:
-      "Esta tabla nunca realiza operaciones. Sus probabilidades son estimaciones experimentales; “favorable” solo aparece tras coincidir ambas lecturas, superar los controles de calidad y validación, y conservar valor estimado positivo después de comisiones.",
+      "Esta tabla nunca realiza operaciones. Sus probabilidades son estimaciones experimentales; “favorable” solo aparece cuando todos los puntos disponibles coinciden, superan los controles de calidad y validación, y conservan valor estimado positivo después de comisiones.",
     noEarlyMarkets: "Esperando el próximo contrato activo de Kalshi.",
     predictionControls: "Controles de predicción",
     advancedFilters: "Filtros avanzados",
