@@ -49,8 +49,10 @@ const MINUTE_10_TARGET_SECONDS_TO_CLOSE = 5 * 60;
 const MINUTE_12_TARGET_SECONDS_TO_CLOSE = 3 * 60;
 const DIRECT_EARLY_REFRESH_MAX_AGE_MS = 55 * 1_000;
 const MARKET_TIME_ZONE = "America/New_York";
-const PUBLISHED_SNAPSHOT_URL =
-  "https://github.com/Ronaldo76625/15-minute-market-intelligence/raw/refs/heads/live-data/live-data.json";
+const PUBLISHED_SNAPSHOT_URLS = [
+  "https://api.github.com/repos/Ronaldo76625/15-minute-market-intelligence/contents/live-data.json?ref=live-data",
+  "https://github.com/Ronaldo76625/15-minute-market-intelligence/raw/refs/heads/live-data/live-data.json",
+] as const;
 const bundledModel = modelSnapshot as ValidatedKalshiModel;
 
 type LiveSignal = ReturnType<typeof buildSignal>;
@@ -1332,35 +1334,52 @@ async function fetchPublishedSnapshot(): Promise<{
   snapshot: StoredSnapshot;
   settlements: KalshiSettlement[];
 }> {
-  const publishedUrl = new URL(PUBLISHED_SNAPSHOT_URL);
-  publishedUrl.searchParams.set(
-    "refresh",
-    Math.floor(Date.now() / 60_000).toString(),
-  );
-  const response = await fetch(publishedUrl, {
-    headers: { Accept: "application/json" },
-    cf: { cacheEverything: true, cacheTtl: 60 },
-    signal: AbortSignal.timeout(8_000),
-  });
-  if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
-  const published = (await response.json()) as {
-    snapshot?: unknown;
-    settlements?: unknown;
-  };
-  if (!isStoredSnapshot(published.snapshot)) {
-    throw new Error("Published snapshot is invalid or stale");
+  let lastError = "unavailable";
+  for (const source of PUBLISHED_SNAPSHOT_URLS) {
+    try {
+      const publishedUrl = new URL(source);
+      publishedUrl.searchParams.set(
+        "refresh",
+        Math.floor(Date.now() / (2 * 60_000)).toString(),
+      );
+      const response = await fetch(publishedUrl, {
+        headers: {
+          Accept: source.includes("api.github.com")
+            ? "application/vnd.github.raw+json"
+            : "application/json",
+          "User-Agent": "15-minute-market-intelligence",
+        },
+        cf: { cacheEverything: true, cacheTtl: 90 },
+        signal: AbortSignal.timeout(8_000),
+      });
+      if (!response.ok) {
+        lastError = `GitHub returned ${response.status}`;
+        continue;
+      }
+      const published = (await response.json()) as {
+        snapshot?: unknown;
+        settlements?: unknown;
+      };
+      if (!isStoredSnapshot(published.snapshot)) {
+        lastError = "Published snapshot is invalid or stale";
+        continue;
+      }
+      const settlements = Array.isArray(published.settlements)
+        ? published.settlements.filter(
+            (item): item is KalshiSettlement =>
+              Boolean(item) &&
+              typeof item === "object" &&
+              typeof (item as KalshiSettlement).ticker === "string" &&
+              ((item as KalshiSettlement).result === "yes" ||
+                (item as KalshiSettlement).result === "no"),
+          )
+        : [];
+      return { snapshot: published.snapshot, settlements };
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
   }
-  const settlements = Array.isArray(published.settlements)
-    ? published.settlements.filter(
-        (item): item is KalshiSettlement =>
-          Boolean(item) &&
-          typeof item === "object" &&
-          typeof (item as KalshiSettlement).ticker === "string" &&
-          ((item as KalshiSettlement).result === "yes" ||
-            (item as KalshiSettlement).result === "no"),
-      )
-    : [];
-  return { snapshot: published.snapshot, settlements };
+  throw new Error(lastError);
 }
 
 function mergeSnapshots(
