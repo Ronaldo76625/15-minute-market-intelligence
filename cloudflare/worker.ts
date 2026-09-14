@@ -50,7 +50,7 @@ const MINUTE_12_TARGET_SECONDS_TO_CLOSE = 3 * 60;
 const DIRECT_EARLY_REFRESH_MAX_AGE_MS = 55 * 1_000;
 const MARKET_TIME_ZONE = "America/New_York";
 const PUBLISHED_SNAPSHOT_URL =
-  "https://raw.githubusercontent.com/Ronaldo76625/15-minute-market-intelligence/live-data/live-data.json";
+  "https://github.com/Ronaldo76625/15-minute-market-intelligence/raw/refs/heads/live-data/live-data.json";
 const bundledModel = modelSnapshot as ValidatedKalshiModel;
 
 type LiveSignal = ReturnType<typeof buildSignal>;
