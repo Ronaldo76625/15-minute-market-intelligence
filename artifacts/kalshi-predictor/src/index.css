@@ -470,6 +470,15 @@
   background-size: cover;
 }
 
+@media (max-width: 767px) {
+  .image-theme .dashboard-grid {
+    background-image:
+      linear-gradient(hsl(215 34% 7% / 0.58), hsl(215 34% 7% / 0.68)),
+      url("/images/kalshi-background-mobile.jpg");
+    background-position: center top;
+  }
+}
+
 .image-theme .data-card {
   background: hsl(var(--card) / 0.86);
   backdrop-filter: blur(5px);
