@@ -26,10 +26,9 @@ import {
   Download,
   FileText,
   Languages,
-  Moon,
+  Palette,
   RefreshCw,
   Search,
-  Sun,
   TrendingUp,
   Wifi,
   X,
@@ -314,11 +313,13 @@ function Home() {
   const queryClient = useQueryClient();
   const [language, setLanguage] = useState<Language>(preferredLanguage);
   const [themePreference, setThemePreference] = useState<
-    "system" | "light" | "dark"
+    "system" | "light" | "dark" | "image"
   >(() => {
     try {
       const saved = localStorage.getItem("kalshi-theme-preference-v2");
-      return saved === "light" || saved === "dark" ? saved : "system";
+      return saved === "light" || saved === "dark" || saved === "image"
+        ? saved
+        : "system";
     } catch {
       return "system";
     }
@@ -340,8 +341,11 @@ function Home() {
   const refreshRef = useRef<HTMLDivElement>(null);
   const copy = translations[language];
   const locale = language === "es" ? "es-MX" : "en-US";
+  const isImageTheme = themePreference === "image";
   const isDark =
-    themePreference === "system" ? systemDark : themePreference === "dark";
+    themePreference === "system"
+      ? systemDark
+      : themePreference === "dark" || isImageTheme;
   const dashboardQuery = useGetKalshiDashboard({
     category: category || undefined,
     minConfidence,
@@ -370,13 +374,14 @@ function Home() {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
+    document.documentElement.classList.toggle("image-theme", isImageTheme);
     try {
       localStorage.removeItem("kalshi-theme");
       if (themePreference === "system")
         localStorage.removeItem("kalshi-theme-preference-v2");
       else localStorage.setItem("kalshi-theme-preference-v2", themePreference);
     } catch {}
-  }, [isDark, themePreference]);
+  }, [isDark, isImageTheme, themePreference]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -589,12 +594,34 @@ function Home() {
                 </small>
               </span>
             </IconButton>
-            <IconButton
-              label={isDark ? copy.toggleLight : copy.toggleDark}
-              onClick={() => setThemePreference(isDark ? "light" : "dark")}
+            <label
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-2 text-muted-foreground transition hover:border-accent hover:text-accent"
+              title={copy.themeSelector}
             >
-              {isDark ? <Sun size={15} /> : <Moon size={15} />}
-            </IconButton>
+              <Palette size={15} aria-hidden="true" />
+              <span className="sr-only">{copy.themeSelector}</span>
+              <select
+                data-testid="select-theme"
+                aria-label={copy.themeSelector}
+                value={
+                  themePreference === "system"
+                    ? systemDark
+                      ? "dark"
+                      : "light"
+                    : themePreference
+                }
+                onChange={(event) =>
+                  setThemePreference(
+                    event.target.value as "light" | "dark" | "image",
+                  )
+                }
+                className="max-w-[112px] cursor-pointer bg-transparent text-xs font-semibold text-foreground outline-none"
+              >
+                <option value="light">{copy.themeLight}</option>
+                <option value="dark">{copy.themeDark}</option>
+                <option value="image">{copy.themeImage}</option>
+              </select>
+            </label>
           </div>
         </header>
 
@@ -697,6 +724,10 @@ function Home() {
           ))}
         </div>
 
+        {/*
+        Section 00 is intentionally disabled. Its source remains here so the
+        opening-checkpoint forecast can be restored later without rebuilding
+        the interface from scratch.
         <div className="mb-6">
           <Panel title={copy.earlyTitle} eyebrow={copy.earlyEyebrow}>
             <div className="border-b border-border/70 px-5 py-3">
@@ -889,6 +920,7 @@ function Home() {
             </p>
           </Panel>
         </div>
+        */}
 
         <details className="data-card group mb-6 rounded-xl">
           <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold">

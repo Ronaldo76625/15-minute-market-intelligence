@@ -1,6 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap");
+@import "tailwindcss";
+@import "tw-animate-css";
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
@@ -141,9 +141,9 @@
   --chart-4: 5 68% 47%;
   --chart-5: 264 42% 55%;
 
-  --app-font-sans: 'Manrope', sans-serif;
+  --app-font-sans: "Manrope", sans-serif;
   --app-font-serif: Georgia, serif;
-  --app-font-mono: 'DM Mono', monospace;
+  --app-font-mono: "DM Mono", monospace;
   --radius: 0.5rem; /* 8px */
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0); /*replace with H S L */
   --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0); /*replace with H S L */
@@ -343,7 +343,7 @@
  */
 @layer utilities {
   /* Hide ugly search cancel button in Chrome until we can style it properly */
-  input[type='search']::-webkit-search-cancel-button {
+  input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;
   }
 
@@ -371,7 +371,7 @@
    */
   .toggle-elevate::before,
   .toggle-elevate-2::before {
-    content: '';
+    content: "";
     pointer-events: none;
     position: absolute;
     inset: 0px;
@@ -403,7 +403,7 @@
   .active-elevate:not(.no-default-active-elevate)::after,
   .hover-elevate-2:not(.no-default-hover-elevate)::after,
   .active-elevate-2:not(.no-default-active-elevate)::after {
-    content: '';
+    content: "";
     pointer-events: none;
     position: absolute;
     inset: 0px;
@@ -434,28 +434,77 @@
 }
 
 @layer base {
-  body { min-width: 320px; }
-  button, a, input, select { -webkit-tap-highlight-color: transparent; }
+  body {
+    min-width: 320px;
+  }
+  button,
+  a,
+  input,
+  select {
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 .dashboard-grid {
-  background-image: linear-gradient(to right, hsl(var(--foreground) / 0.025) 1px, transparent 1px),
-    linear-gradient(to bottom, hsl(var(--foreground) / 0.025) 1px, transparent 1px);
+  background-image:
+    linear-gradient(
+      to right,
+      hsl(var(--foreground) / 0.025) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      hsl(var(--foreground) / 0.025) 1px,
+      transparent 1px
+    );
   background-size: 32px 32px;
+}
+
+.image-theme .dashboard-grid {
+  background-image:
+    linear-gradient(hsl(215 34% 7% / 0.58), hsl(215 34% 7% / 0.68)),
+    url("/images/kalshi-background.jpg");
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.image-theme .data-card {
+  background: hsl(var(--card) / 0.86);
+  backdrop-filter: blur(5px);
 }
 
 .data-card {
   border: 1px solid hsl(var(--border));
   background: hsl(var(--card) / 0.92);
-  box-shadow: 0 1px 0 hsl(var(--foreground) / 0.03), 0 12px 34px hsl(215 30% 10% / 0.04);
+  box-shadow:
+    0 1px 0 hsl(var(--foreground) / 0.03),
+    0 12px 34px hsl(215 30% 10% / 0.04);
 }
 
-.dark .data-card { box-shadow: 0 1px 0 hsl(var(--foreground) / 0.05), 0 18px 42px hsl(215 34% 4% / 0.18); }
+.dark .data-card {
+  box-shadow:
+    0 1px 0 hsl(var(--foreground) / 0.05),
+    0 18px 42px hsl(215 34% 4% / 0.18);
+}
 
 @media print {
-  @page { margin: 0.4in; }
-  .print-hidden { display: none !important; }
-  .dashboard-grid { background-image: none; }
-  .data-card { break-inside: avoid; box-shadow: none; }
-  body { background: #f8f6ef !important; color: #1d2935 !important; }
+  @page {
+    margin: 0.4in;
+  }
+  .print-hidden {
+    display: none !important;
+  }
+  .dashboard-grid {
+    background-image: none;
+  }
+  .data-card {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+  body {
+    background: #f8f6ef !important;
+    color: #1d2935 !important;
+  }
 }

@@ -1218,17 +1218,19 @@ export async function generateLiveMarketSnapshot(
       selectedModel,
     ),
   );
-  const openingObservations = buildOpeningObservations(
-    apiMarkets,
-    candlesByTicker,
-    selectedModel,
-  );
+  // Section 00 is disabled. Keep the implementation above available, but do
+  // not calculate opening-checkpoint observations or add them to snapshots.
+  // const openingObservations = buildOpeningObservations(
+  //   apiMarkets,
+  //   candlesByTicker,
+  //   selectedModel,
+  // );
 
   return {
     markets: apiMarkets.map(toDashboardMarket),
     signals,
     priceHistory,
-    openingObservations,
+    // openingObservations,
     asOf: new Date().toISOString(),
     model: selectedModel,
   };
@@ -1280,12 +1282,17 @@ async function writeStoredSnapshot(
   env: Env,
   snapshot: StoredSnapshot,
 ): Promise<void> {
+  // Section 00 is disabled: do not persist its checkpoint payloads in D1.
+  const snapshotWithoutOpeningForecasts: StoredSnapshot = {
+    ...snapshot,
+    openingObservations: undefined,
+  };
   await env.DB.prepare(
     `INSERT INTO live_snapshots (id, payload, updated_at)
      VALUES (1, ?, ?)
      ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`,
   )
-    .bind(JSON.stringify(snapshot), snapshot.asOf)
+    .bind(JSON.stringify(snapshotWithoutOpeningForecasts), snapshot.asOf)
     .run();
 }
 
@@ -1311,9 +1318,8 @@ function removeExpiredMarkets(snapshot: StoredSnapshot): StoredSnapshot {
   return {
     ...snapshot,
     markets,
-    openingObservations: snapshot.openingObservations?.filter((observation) =>
-      tickers.has(observation.ticker),
-    ),
+    // Section 00 is disabled; discard any legacy checkpoint payload.
+    openingObservations: undefined,
     signals: refreshSignalTimers(
       snapshot.signals.filter((signal) => tickers.has(signal.ticker)),
       markets,
@@ -1406,15 +1412,8 @@ function mergeSnapshots(
       ),
       ...incoming.signals,
     ],
-    openingObservations: [
-      ...(currentPrevious.openingObservations ?? []).filter((observation) => {
-        const market = currentPrevious.markets.find(
-          (candidate) => candidate.ticker === observation.ticker,
-        );
-        return market && !refreshedAssets.has(market.asset);
-      }),
-      ...(incoming.openingObservations ?? []),
-    ],
+    // Section 00 is disabled; do not merge legacy checkpoint payloads.
+    openingObservations: undefined,
     priceHistory: refreshedAssets.has("BTC")
       ? incoming.priceHistory
       : currentPrevious.priceHistory,
@@ -1453,13 +1452,8 @@ async function refreshLiveSnapshot(
     settlements,
     snapshot.model.name,
   );
-  await updateEarlyForecastLedger(
-    env,
-    current.signals,
-    current.markets,
-    settlements,
-    current.openingObservations,
-  );
+  // Section 00 is disabled: no early-forecast D1 reads or writes.
+  // await updateEarlyForecastLedger(...)
 }
 
 function isEarlyContractWindow(snapshot: StoredSnapshot): boolean {
@@ -1480,11 +1474,8 @@ async function refreshDirectlyWhenNeeded(
 ): Promise<StoredSnapshot | undefined> {
   const current = stored ? removeExpiredMarkets(stored) : undefined;
   const needsCurrentContract = !current?.markets.length;
-  const needsEarlyReading =
-    Boolean(current?.markets.length) &&
-    isEarlyContractWindow(current!) &&
-    snapshotAgeMs(current!) > DIRECT_EARLY_REFRESH_MAX_AGE_MS;
-  if (!needsCurrentContract && !needsEarlyReading) return stored;
+  // Section 00 is disabled, so there is no extra refresh for its checkpoints.
+  if (!needsCurrentContract) return stored;
 
   try {
     const incoming = await generateLiveMarketSnapshot();
@@ -1551,13 +1542,8 @@ async function getLiveSnapshot(
     settlements,
     stored.model.name,
   );
-  const earlyForecasts = await updateEarlyForecastLedger(
-    env,
-    currentSignals,
-    current.markets,
-    settlements,
-    current.openingObservations,
-  );
+  // Preserve the API shape while Section 00 is disabled, without touching D1.
+  const earlyForecasts: EarlyForecast[] = [];
   const snapshot: LiveSnapshot = {
     ...current,
     signals: currentSignals,
@@ -1596,13 +1582,8 @@ async function syncPublishedSnapshot(env: Env): Promise<void> {
     published.settlements,
     published.snapshot.model.name,
   );
-  await updateEarlyForecastLedger(
-    env,
-    current.signals,
-    current.markets,
-    published.settlements,
-    current.openingObservations,
-  );
+  // Section 00 is disabled: no early-forecast D1 reads or writes.
+  // await updateEarlyForecastLedger(...)
 }
 
 async function maintainLiveSnapshot(env: Env): Promise<void> {
@@ -1622,11 +1603,7 @@ async function maintainLiveSnapshot(env: Env): Promise<void> {
     );
   }
   const current = stored ? removeExpiredMarkets(stored) : undefined;
-  if (
-    !current?.markets.length ||
-    (isEarlyContractWindow(current) &&
-      snapshotAgeMs(current) > DIRECT_EARLY_REFRESH_MAX_AGE_MS)
-  ) {
+  if (!current?.markets.length) {
     await refreshLiveSnapshot(env);
   }
 }

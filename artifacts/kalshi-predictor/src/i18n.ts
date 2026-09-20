@@ -34,6 +34,10 @@ export const translations = {
     print: "Print or save PDF",
     toggleDark: "Use dark mode",
     toggleLight: "Use light mode",
+    themeSelector: "Choose appearance",
+    themeLight: "Light",
+    themeDark: "Dark",
+    themeImage: "Image",
     toggleLanguage: "Cambiar a español",
     feedUnavailable: "The signal feed is unavailable",
     feedUnavailableBody:
@@ -247,6 +251,10 @@ export const translations = {
     print: "Imprimir o guardar PDF",
     toggleDark: "Usar modo oscuro",
     toggleLight: "Usar modo claro",
+    themeSelector: "Elegir apariencia",
+    themeLight: "Claro",
+    themeDark: "Oscuro",
+    themeImage: "Imagen",
     toggleLanguage: "Switch to English",
     feedUnavailable: "La fuente de señales no está disponible",
     feedUnavailableBody:
