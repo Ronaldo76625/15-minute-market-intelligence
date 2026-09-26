@@ -1715,6 +1715,49 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
+async function getPublicDirectionFeed(
+  request: Request,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  const cacheUrl = new URL(request.url);
+  cacheUrl.pathname = "/__internal/kalshi-public-directions";
+  cacheUrl.search = "";
+  const cacheKey = new Request(cacheUrl, { method: "GET" });
+  const cached = await caches.default.match(cacheKey);
+  if (cached) return cached;
+
+  let snapshot: StoredSnapshot;
+  try {
+    snapshot = await generateLiveMarketSnapshot();
+  } catch (error) {
+    console.warn("Unable to load Kalshi directly; using published data", error);
+    snapshot = (await fetchPublishedSnapshot()).snapshot;
+  }
+
+  const current = removeExpiredMarkets(snapshot);
+  const directions = LIVE_SERIES.flatMap((seriesTicker) => {
+    const asset = ASSET_BY_SERIES[seriesTicker];
+    const signal = current.signals.find((item) => item.asset === asset);
+    return signal
+      ? [{ ticker: signal.ticker, asset: signal.asset, side: signal.side }]
+      : [];
+  });
+  if (directions.length === 0) {
+    throw new Error("No active Kalshi directions are available");
+  }
+
+  const response = Response.json(
+    { asOf: current.asOf, directions },
+    {
+      headers: {
+        "cache-control": `public, max-age=${SNAPSHOT_CACHE_SECONDS}`,
+      },
+    },
+  );
+  ctx.waitUntil(caches.default.put(cacheKey, response.clone()));
+  return response;
+}
+
 function dashboardResponse(snapshot: LiveSnapshot, url: URL) {
   const activeModel = snapshot.model;
   const category = url.searchParams.get("category") ?? "";
@@ -1816,33 +1859,39 @@ export default {
   async fetch(request, env, ctx): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname === "/api/kalshi/dashboard") {
+    if (url.pathname === "/api/kalshi/directions") {
       if (request.method !== "GET")
         return json({ error: "Method not allowed" }, 405);
       try {
-        const snapshot = await getLiveSnapshot(env, request, ctx);
-        return json(dashboardResponse(snapshot, url));
+        return await getPublicDirectionFeed(request, ctx);
       } catch (error) {
-        console.error("Unable to load live Kalshi dashboard", error);
+        console.error("Unable to load live Kalshi directions", error);
         return json({ error: "Unable to load live Kalshi data" }, 502);
       }
     }
 
     if (url.pathname === "/api/kalshi/markets") {
-      if (request.method !== "GET")
-        return json({ error: "Method not allowed" }, 405);
-      try {
-        const snapshot = await getLiveSnapshot(env, request, ctx);
-        return json(snapshot.markets);
-      } catch (error) {
-        console.error("Unable to list live Kalshi markets", error);
-        return json({ error: "Unable to load live Kalshi data" }, 502);
-      }
+      return json({ error: "Statistics dashboard disabled" }, 410);
     }
+
+    if (url.pathname === "/api/kalshi/dashboard") {
+      return json({ error: "Statistics dashboard disabled" }, 410);
+    }
+
+    /*
+     * The full dashboard and market routes previously called getLiveSnapshot,
+     * which reads and writes D1 statistics. They are intentionally disabled
+     * above while the public application is in direction-only mode. The
+     * implementation remains in this file for a future restoration.
+     */
 
     return env.ASSETS.fetch(request);
   },
-  async scheduled(_controller, env, ctx): Promise<void> {
-    ctx.waitUntil(maintainLiveSnapshot(env));
-  },
+  /*
+   * Statistical cron intentionally disabled. Keeping the former body here
+   * documents how to restore it without performing background D1 operations:
+   * async scheduled(_controller, env, ctx) {
+   *   ctx.waitUntil(maintainLiveSnapshot(env));
+   * }
+   */
 } satisfies ExportedHandler<Env>;
